@@ -1,0 +1,134 @@
+{{ define "title" }}Пост — {{ .Title }}{{ end }} {{ define "content" }}
+<article>
+	<h2>{{ .Title }}</h2>
+	<div>
+		<small>Автор ID: {{ .AuthorID }} · Доска ID: {{ .BoardID }}</small>
+	</div>
+	<div style="margin: 12px 0; white-space: pre-wrap">{{ .Content }}</div>
+    {{ if .ImageData }}
+	<div style="margin-top: 12px">
+        <img src="/post/{{ .ID }}/image" alt="image" style="max-width: 100%; height: auto" />
+	</div>
+	{{ end }} {{ if .LinkURL }}
+	<div style="margin-top: 12px">
+		<a href="{{ .LinkURL }}" target="_blank" rel="noopener">Ссылка</a>
+	</div>
+	{{ end }}
+	<div style="margin-top: 12px">
+		<small>Создан: {{ .CreatedAt }} · Обновлён: {{ .UpdatedAt }}</small>
+	</div>
+	<div style="margin-top: 16px">
+		<a href="/post/{{ .ID }}?edit=1">Редактировать</a>
+	</div>
+</article>
+
+<section style="margin-top: 24px">
+    <h3>Лайки: {{ .Likes }} · Дизлайки: {{ .Dislikes }}</h3>
+    <a href="/post/{{ .ID }}/like">Лайк</a>
+    <span> · </span>
+    <a href="/post/{{ .ID }}/dislike">Дизлайк</a>
+    <span style="margin-left: 12px; color: #888"></span>
+</section>
+
+<section style="margin-top: 24px">
+	<h3>Комментарии</h3>
+<form method="POST" action="/api/comment">
+		<input type="hidden" name="post_id" value="{{ .ID }}" />
+		<textarea name="content" rows="3" style="width: 100%" required></textarea>
+		<div style="margin-top: 8px"><button type="submit">Отправить</button></div>
+	</form>
+	<ul style="list-style: none; padding: 0; margin-top: 16px">
+		{{ range .Comments }}
+		<li style="border-top: 1px solid #eee; padding: 8px 0">
+			<div><strong>Автор ID: {{ .AuthorID }}</strong> · {{ .CreatedAt }}</div>
+			<div style="white-space: pre-wrap">{{ .Content }}</div>
+			<div style="margin-top: 6px">
+				<span>Лайки: {{ .Likes }} · Дизлайки: {{ .Dislikes }}</span>
+                <a href="/comment/{{ .ID }}/like?post_id={{ $.ID }}" style="margin-left: 8px">Лайк</a>
+                <a href="/comment/{{ .ID }}/dislike?post_id={{ $.ID }}" style="margin-left: 6px">Дизлайк</a>
+                <form
+                    method="POST"
+                    action="/api/delete_comment"
+                    style="display: inline; margin-left: 8px"
+                >
+					<input type="hidden" name="post_id" value="{{ $.ID }}" />
+					<input type="hidden" name="comment_id" value="{{ .ID }}" />
+					<button type="submit">Удалить</button>
+				</form>
+			</div>
+		</li>
+		{{ else }}
+		<li>Пока нет комментариев.</li>
+		{{ end }}
+	</ul>
+</section>
+{{ end }}
+
+<script>
+// Enhance like/dislike links and comment form to avoid full page reload
+(function () {
+  // Helper to fetch JSON
+  async function fetchJSON(url, opts) {
+    const res = await fetch(url, Object.assign({ headers: { 'Accept': 'application/json' } }, opts || {}));
+    if (!res.ok) throw new Error('Request failed');
+    return res.json();
+  }
+
+  // Post like/dislike
+  const postId = '{{ .ID }}';
+  const likeLink = document.querySelector('a[href="/post/' + postId + '/like"]');
+  const dislikeLink = document.querySelector('a[href="/post/' + postId + '/dislike"]');
+  const likesHeader = document.querySelector('h3');
+  function updatePostCounts(data) {
+    if (!likesHeader) return;
+    likesHeader.textContent = 'Лайки: ' + data.likes + ' · Дизлайки: ' + data.dislikes;
+  }
+  if (likeLink) {
+    likeLink.addEventListener('click', async function (e) {
+      e.preventDefault();
+      try { const data = await fetchJSON(this.href); updatePostCounts(data); } catch (_) {}
+    });
+  }
+  if (dislikeLink) {
+    dislikeLink.addEventListener('click', async function (e) {
+      e.preventDefault();
+      try { const data = await fetchJSON(this.href); updatePostCounts(data); } catch (_) {}
+    });
+  }
+
+  // Comment like/dislike
+  document.querySelectorAll('a[href^="/comment/"]').forEach(function (a) {
+    a.addEventListener('click', async function (e) {
+      // only intercept like/dislike, not delete
+      if (!/\/comment\/\d+\/(like|dislike)/.test(this.getAttribute('href'))) return;
+      e.preventDefault();
+      try {
+        const data = await fetchJSON(this.href);
+        // find sibling span that contains "Лайки:" and update
+        const container = this.closest('li');
+        if (!container) return;
+        const span = container.querySelector('span');
+        if (span) span.textContent = 'Лайки: ' + data.likes + ' · Дизлайки: ' + data.dislikes;
+      } catch (_) {}
+    });
+  });
+
+  // Comment form submit via fetch to append without reload
+  const form = document.querySelector('form[action="/api/comment"][method="POST"]');
+  if (form) {
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const fd = new FormData(form);
+      try {
+        const res = await fetch('/api/comment', { method: 'POST', body: fd, headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error();
+        // On success, just reload comments by reloading the page partially would be complex; simplest is to clear textarea
+        form.querySelector('textarea[name="content"]').value = '';
+        // Optionally, you could append the new comment HTML here if API returned full comment
+        // For now, we can soft-reload to reflect the new comment counts
+        location.reload();
+      } catch (_) {}
+    });
+  }
+})();
+</script>

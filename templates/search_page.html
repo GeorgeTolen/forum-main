@@ -1,0 +1,22 @@
+<h2>Результаты поиска по "{{.Query}}"</h2>
+
+<h3>Найденные доски:</h3>
+<ul>
+	{{range .Boards}}
+	<li><a href="/board/{{.Slug}}">{{.Title}}</a> — {{.Description}}</li>
+	{{else}}
+	<li>Доски не найдены</li>
+	{{end}}
+</ul>
+
+<h3>Найденные посты:</h3>
+<ul>
+	{{range .Posts}}
+	<li>
+		<a href="/post/{{.ID}}">{{.Title}}</a>
+		<p>{{.Content}}</p>
+	</li>
+	{{else}}
+	<li>Посты не найдены</li>
+	{{end}}
+</ul>

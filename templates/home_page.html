@@ -1,0 +1,19 @@
+{{ define "title" }}Главная — Форум{{ end }} {{ define "content" }}
+<section>
+	<h2>Добро пожаловать на форум!</h2>
+	<p>Общайтесь, делитесь новостями и публикуйте интересные посты.</p>
+</section>
+
+<section style="margin-top: 16px">
+	<h2>Последние посты</h2>
+	{{ range .Posts }}
+	<div class="post">
+		<h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+		<p>{{.Content}}</p>
+		<small>Автор ID: {{.AuthorID}} | {{.CreatedAt}}</small>
+	</div>
+	{{ else }}
+	<p>Пока нет постов.</p>
+	{{ end }}
+</section>
+{{ end }}

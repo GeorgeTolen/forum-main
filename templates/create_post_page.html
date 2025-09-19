@@ -1,0 +1,22 @@
+{{ define "title" }}Создать пост — Форум{{ end }} {{ define "content" }}
+<h2>Создание поста</h2>
+<form method="POST" action="/api/post" enctype="multipart/form-data">
+	<label>Выберите доску:</label><br />
+	<select name="board_id" required>
+		{{ range . }}
+		<option value="{{ .ID }}">{{ .Title }}</option>
+		{{ end }}</select
+	><br /><br />
+
+	<label>Заголовок:</label><br />
+	<input type="text" name="title" required /><br /><br />
+
+	<label>Содержимое:</label><br />
+	<textarea name="content" rows="5" required></textarea><br /><br />
+
+	<label>Изображение (необязательно):</label><br />
+	<input type="file" name="image" accept="image/*" /><br /><br />
+
+	<button type="submit">Создать пост</button>
+</form>
+{{ end }}

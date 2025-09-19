@@ -1,0 +1,27 @@
+{{ define "title" }}Создать новый клуб{{ end }} {{ define "content" }}
+<h2>Создать новый клуб</h2>
+<form method="POST" action="/clubs">
+	<p>
+		<label
+			>Название:<br />
+			<input type="text" name="name" required
+		/></label>
+	</p>
+	<p>
+		<label
+			>Тематика:<br />
+			<input type="text" name="topic" required
+		/></label>
+	</p>
+	<p>
+		<label
+			>Описание:<br />
+			<textarea name="description" rows="4" cols="40"></textarea>
+		</label>
+	</p>
+	<p>
+		<button type="submit">Создать</button>
+		<a href="/clubs">Отмена</a>
+	</p>
+</form>
+{{ end }}

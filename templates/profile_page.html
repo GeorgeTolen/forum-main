@@ -1,0 +1,20 @@
+{{ define "title" }}Профиль — Форум{{ end }} {{ define "content" }}
+
+<h2>Профиль пользователя</h2>
+<p><strong>Имя пользователя:</strong> {{.Username}}</p>
+<p><strong>Email:</strong> {{.Email}}</p>
+<h3>Редактирования Профиля</h3>
+
+<form method="POST" action="/profile">
+	<label>Новый email:</label><br />
+	<input type="email" name="email" /><br /><br />
+
+	<label>Новый пароль:</label><br />
+	<input type="password" name="password" /><br /><br />
+
+	<button type="submit">Обновить</button>
+</form>
+
+<br />
+<a href="/logout">Выйти из аккаунта</a>
+{{ end }}

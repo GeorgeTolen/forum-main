@@ -1,0 +1,12 @@
+{{ define "title" }}Вход — Форум{{ end }} {{ define "content" }}
+<h2>Вход</h2>
+<form method="POST" action="/api/login">
+	<label>Имя пользователя:</label><br />
+	<input type="text" name="username" required /><br /><br />
+
+	<label>Пароль:</label><br />
+	<input type="password" name="password" required /><br /><br />
+
+	<button type="submit">Войти</button>
+</form>
+{{ end }}

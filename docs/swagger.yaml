@@ -1,0 +1,271 @@
+basePath: /
+definitions:
+  entity.Board:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      slug:
+        type: string
+      title:
+        type: string
+    type: object
+  entity.Comment:
+    properties:
+      author_id:
+        type: integer
+      content:
+        type: string
+      created_at:
+        type: string
+      dislikes:
+        type: integer
+      id:
+        type: integer
+      likes:
+        type: integer
+      post_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  entity.Post:
+    properties:
+      author_id:
+        type: integer
+      board_id:
+        type: integer
+      comments:
+        items:
+          $ref: '#/definitions/entity.Comment'
+        type: array
+      content:
+        type: string
+      created_at:
+        type: string
+      dislikes:
+        type: integer
+      id:
+        type: integer
+      image_url:
+        type: string
+      likes:
+        type: integer
+      link_url:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: rediska1203@gmail.com
+    name: Tolik
+    url: http://example.com
+  description: API for Forum-Go project
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://example.com/terms/
+  title: Forum API
+  version: "1.0"
+paths:
+  /board/:
+    get:
+      responses:
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+  /boards_list_page/:
+    get:
+      description: Возвращает список всех досок
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.Board'
+            type: array
+      summary: Get list of boards
+      tags:
+      - Boards
+  /create_post_page/:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Создает пост (multipart/form-data поддерживается для image)
+      parameters:
+      - description: Board ID
+        in: formData
+        name: board_id
+        required: true
+        type: integer
+      - description: Title
+        in: formData
+        name: title
+        required: true
+        type: string
+      - description: Content
+        in: formData
+        name: content
+        required: true
+        type: string
+      - description: Image file
+        in: formData
+        name: image
+        type: file
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: redirect to board
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new post
+      tags:
+      - Posts
+  /login_page/:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: Username
+        in: formData
+        name: username
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      responses:
+        "302":
+          description: redirect to profile
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - Auth
+  /post_page/:
+    get:
+      description: Возвращает пост по id
+      parameters:
+      - description: Post ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Post'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a post
+      tags:
+      - Posts
+  /posts/by_board:
+    get:
+      parameters:
+      - description: Board ID
+        in: query
+        name: board_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/entity.Post'
+            type: array
+      summary: Get posts by board
+      tags:
+      - Posts
+  /register_page/:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: Username
+        in: formData
+        name: username
+        required: true
+        type: string
+      - description: Email
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      responses:
+        "302":
+          description: redirect to login
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register new user
+      tags:
+      - Auth
+  /search_page/:
+    get:
+      description: Search posts and boards by query
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Search in forum
+      tags:
+      - Search
+schemes:
+- http
+swagger: "2.0"

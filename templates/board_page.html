@@ -1,0 +1,41 @@
+{{ define "title" }}{{ .Board.Title }} — Форум{{ end }} {{ define "content" }}
+<div style="margin-bottom: 24px">
+	<h2 style="font-size: 24px; color: #333; margin-bottom: 6px">
+		{{ .Board.Title }}
+	</h2>
+	<p style="color: #555; margin: 0">{{ .Board.Description }}</p>
+</div>
+
+<h3 style="font-size: 20px; margin-bottom: 12px; color: #444">Посты:</h3>
+<ul style="list-style: none; padding: 0; margin: 0">
+	{{ range .Posts }}
+	<li
+		style="
+			margin-bottom: 20px;
+			padding: 16px;
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			background: #fff;
+			transition: 0.2s;
+		"
+	>
+		<h4 style="margin: 0 0 8px">
+			<a
+				href="/post/{{ .ID }}"
+				style="font-size: 18px; color: #0066cc; text-decoration: none"
+			>
+				{{ .Title }}
+			</a>
+		</h4>
+		<small style="color: #999"
+			>Автор ID: {{ .AuthorID }} · {{ .CreatedAt }}</small
+		>
+		<p style="margin: 12px 0; color: #333; white-space: pre-wrap">
+			{{ .Content }}
+		</p>
+	</li>
+	{{ else }}
+	<p style="color: #777">Пока нет постов в этой доске.</p>
+	{{ end }}
+</ul>
+{{ end }}

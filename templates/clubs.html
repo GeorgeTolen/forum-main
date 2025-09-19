@@ -1,0 +1,14 @@
+{{ define "title" }}Клубы — Форум{{ end }} {{ define "content" }}
+<h2>Список клубов</h2>
+
+<!-- Кнопка -->
+<p><a href="/clubs/new" class="btn">➕ Создать клуб</a></p>
+
+<ul>
+	{{ range . }}
+	<li><a href="/clubs/{{ .ID }}">{{ .Name }}</a> — {{ .Topic }}</li>
+	{{ else }}
+	<li>Клубов пока нет</li>
+	{{ end }}
+</ul>
+{{ end }}

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<title>{{ template "title" . }}</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				background: #f5f5f5;
+			}
+			header {
+				background: #2c3e50;
+				padding: 10px 20px;
+				color: white;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+			header h1 {
+				margin: 0;
+			}
+			.search-bar {
+				display: flex;
+				align-items: center;
+			}
+			.search-bar input[type='text'] {
+				padding: 5px 10px;
+				border-radius: 4px 0 0 4px;
+				border: none;
+				outline: none;
+			}
+			.search-bar button {
+				padding: 6px 12px;
+				border: none;
+				background: #2980b9;
+				color: white;
+				border-radius: 0 4px 4px 0;
+				cursor: pointer;
+			}
+			.search-bar button:hover {
+				background: #3498db;
+			}
+			.container {
+				display: grid;
+				grid-template-columns: 200px 1fr 250px;
+				gap: 20px;
+				padding: 20px;
+			}
+			nav {
+				background: #34495e;
+				color: white;
+				padding: 15px;
+				border-radius: 8px;
+			}
+			nav a {
+				display: block;
+				color: white;
+				text-decoration: none;
+				margin: 8px 0;
+			}
+			nav a:hover {
+				text-decoration: underline;
+			}
+			main {
+				background: white;
+				padding: 15px;
+				border-radius: 8px;
+			}
+			.post {
+				border-bottom: 1px solid #ddd;
+				padding: 10px 0;
+			}
+			.post h3 {
+				margin: 0;
+				color: #2c3e50;
+			}
+			.post p {
+				margin: 5px 0;
+				color: #555;
+			}
+			aside {
+				background: white;
+				padding: 15px;
+				border-radius: 8px;
+			}
+			aside h4 {
+				margin-top: 0;
+			}
+			.category {
+				margin: 5px 0;
+			}
+			.category a {
+				text-decoration: none;
+				color: #2980b9;
+			}
+		</style>
+	</head>
+	<script>
+		function filterMain() {
+			let input = document
+				.getElementById('main-search-input')
+				.value.toLowerCase()
+			let posts = document.querySelectorAll('main .post') // ищем только посты
+			posts.forEach(post => {
+				let text = post.innerText.toLowerCase()
+				if (text.includes(input)) {
+					post.style.display = ''
+				} else {
+					post.style.display = 'none'
+				}
+			})
+		}
+
+		// Реакция "на лету"
+		document
+			.getElementById('main-search-input')
+			.addEventListener('input', filterMain)
+	</script>
+
+	<body>
+		<header>
+			<h1>My Forum</h1>
+			<form class="search-bar" id="main-search-form" onsubmit="return false;">
+				<input type="text" id="main-search-input" placeholder="Поиск..." />
+				<button type="button" onclick="filterMain()">Найти</button>
+			</form>
+		</header>
+		<div class="container">
+			<!-- Левое меню -->
+			<nav>
+				<h3>Навигация</h3>
+				<a href="/">Главная</a> <a href="/boards">Доски</a>
+				<a href="/profile/1">Профиль</a>
+				<a href="/create-post">Создать пост</a>
+				<a href="/login">Войти</a>
+				<a href="/register">Регистрация</a>
+			</nav>
+			<!-- Центральная часть -->
+			<main>{{ template "content" . }}</main>
+			<!-- Правая колонка -->
+			<aside>
+				<h4>Категории</h4>
+				<div class="category"><a href="/board/title">Title</a></div>
+				<div class="category"><a href="/board/education">Education</a></div>
+				<div class="category"><a href="/clubs">Clubs</a></div>
+				<div class="category"><a href="/board/news">News</a></div>
+				<div class="category"><a href="/board/reviews">Reviews</a></div>
+			</aside>
+		</div>
+	</body>
+</html>

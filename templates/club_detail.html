@@ -1,0 +1,6 @@
+{{ define "title" }}{{ .Name }} — Клуб{{ end }} {{ define "content" }}
+<h2>{{ .Name }}</h2>
+<p><b>Тематика:</b> {{ .Topic }}</p>
+<p>{{ .Description }}</p>
+<p><a href="/clubs">← Назад к списку клубов</a></p>
+{{ end }}
