@@ -94,7 +94,7 @@ func (r *postRepository) GetPostsByBoard(ctx context.Context, boardID int64) ([]
 		var p entity.Post
 		var imageURL sql.NullString
 		var linkURL sql.NullString
-		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		if imageURL.Valid {
