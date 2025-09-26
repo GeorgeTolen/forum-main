@@ -1,59 +1,282 @@
-{{ define "title" }}Пост — {{ .Title }}{{ end }} {{ define "content" }}
+{{ define "title" }}Пост — {{ .Post.Title }}{{ end }} {{ define "content" }}
+<style>
+	.reply-comment {
+		margin-left: 30px;
+		border-left: 2px solid #e0e0e0;
+		padding-left: 15px;
+	}
+
+	.reply-link {
+		margin-left: 8px;
+		color: #007bff;
+		text-decoration: none;
+		font-size: 14px;
+	}
+
+	.reply-link:hover {
+		text-decoration: underline;
+	}
+
+	.reply-form {
+		margin-top: 10px;
+		padding: 15px;
+		background: #f8f9fa;
+		border-radius: 8px;
+		border: 1px solid #dee2e6;
+	}
+
+	.reply-form textarea {
+		width: 100%;
+		height: 80px;
+		padding: 8px;
+		border: 1px solid #ced4da;
+		border-radius: 4px;
+		resize: vertical;
+		margin-bottom: 10px;
+	}
+
+	.reply-buttons {
+		display: flex;
+		gap: 10px;
+	}
+
+	.reply-buttons button {
+		padding: 8px 16px;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 14px;
+	}
+
+	.reply-buttons button[type='submit'] {
+		background: #28a745;
+		color: white;
+	}
+
+	.reply-buttons button[type='submit']:hover {
+		background: #218838;
+	}
+
+	.cancel-reply {
+		background: #6c757d;
+		color: white;
+	}
+
+	.cancel-reply:hover {
+		background: #5a6268;
+	}
+
+	.image-upload-section {
+		margin: 10px 0;
+	}
+
+	.image-upload-label {
+		display: inline-block;
+		padding: 8px 12px;
+		background: #f8f9fa;
+		border: 2px dashed #dee2e6;
+		border-radius: 4px;
+		cursor: pointer;
+		color: #6c757d;
+		font-size: 14px;
+		transition: all 0.3s ease;
+	}
+
+	.image-upload-label:hover {
+		background: #e9ecef;
+		border-color: #adb5bd;
+	}
+
+	.image-upload-input {
+		display: none;
+	}
+
+	.image-preview {
+		margin-top: 10px;
+		text-align: center;
+	}
+
+	.image-preview img {
+		max-width: 200px;
+		max-height: 150px;
+		border-radius: 4px;
+		border: 1px solid #dee2e6;
+	}
+
+	.remove-image {
+		display: block;
+		margin: 5px auto 0;
+		padding: 4px 8px;
+		background: #dc3545;
+		color: white;
+		border: none;
+		border-radius: 3px;
+		cursor: pointer;
+		font-size: 12px;
+	}
+
+	.remove-image:hover {
+		background: #c82333;
+	}
+</style>
 <article>
-	<h2>{{ .Title }}</h2>
+	<h2>{{ .Post.Title }}</h2>
 	<div>
-		<small>Автор ID: {{ .AuthorID }} · Доска ID: {{ .BoardID }}</small>
+		<small
+			>Автор ID: {{ .Post.AuthorID }} · Доска ID: {{ .Post.BoardID }}</small
+		>
 	</div>
-	<div style="margin: 12px 0; white-space: pre-wrap">{{ .Content }}</div>
-    {{ if .ImageData }}
+	<div style="margin: 12px 0; white-space: pre-wrap">{{ .Post.Content }}</div>
+	{{ if .Post.ImageData }}
 	<div style="margin-top: 12px">
-        <img src="/post/{{ .ID }}/image" alt="image" style="max-width: 100%; height: auto" />
+		<img
+			src="/post/{{ .Post.ID }}/image"
+			alt="image"
+			style="max-width: 100%; height: auto"
+		/>
 	</div>
-	{{ end }} {{ if .LinkURL }}
+	{{ end }} {{ if .Post.LinkURL }}
 	<div style="margin-top: 12px">
-		<a href="{{ .LinkURL }}" target="_blank" rel="noopener">Ссылка</a>
+		<a href="{{ .Post.LinkURL }}" target="_blank" rel="noopener">Ссылка</a>
 	</div>
 	{{ end }}
 	<div style="margin-top: 12px">
-		<small>Создан: {{ .CreatedAt }} · Обновлён: {{ .UpdatedAt }}</small>
+		<small
+			>Создан: {{ .Post.CreatedAt }} · Обновлён: {{ .Post.UpdatedAt }}</small
+		>
 	</div>
 	<div style="margin-top: 16px">
-		<a href="/post/{{ .ID }}?edit=1">Редактировать</a>
+		<a href="/post/{{ .Post.ID }}?edit=1">Редактировать</a>
 	</div>
 </article>
 
 <section style="margin-top: 24px">
-    <h3>Лайки: {{ .Likes }} · Дизлайки: {{ .Dislikes }}</h3>
-    <a href="/post/{{ .ID }}/like">Лайк</a>
-    <span> · </span>
-    <a href="/post/{{ .ID }}/dislike">Дизлайк</a>
-    <span style="margin-left: 12px; color: #888"></span>
+	<h3>Продвинуто: {{ .Post.Likes }} · Не нравится: {{ .Post.Dislikes }}</h3>
+	<a href="/post/{{ .Post.ID }}/like">Продвинуть</a>
+	<span> · </span>
+	<a href="/post/{{ .Post.ID }}/dislike">Не нравится</a>
+	<span style="margin-left: 12px; color: #888"></span>
 </section>
 
 <section style="margin-top: 24px">
-	<h3>Комментарии</h3>
-<form method="POST" action="/api/comment">
-		<input type="hidden" name="post_id" value="{{ .ID }}" />
+	<h3>Комментарии (Всего: {{ len .Post.Comments }})</h3>
+	<form method="POST" action="/api/comment" enctype="multipart/form-data">
+		<input type="hidden" name="post_id" value="{{ .Post.ID }}" />
 		<textarea name="content" rows="3" style="width: 100%" required></textarea>
 		<div style="margin-top: 8px"><button type="submit">Отправить</button></div>
 	</form>
 	<ul style="list-style: none; padding: 0; margin-top: 16px">
-		{{ range .Comments }}
-		<li style="border-top: 1px solid #eee; padding: 8px 0">
+		{{ range .Post.Comments }}
+		<li
+			style="border-top: 1px solid #eee; padding: 8px 0"
+			{{
+			if
+			.ParentID
+			}}class="reply-comment"
+			{{
+			end
+			}}
+		>
 			<div><strong>Автор ID: {{ .AuthorID }}</strong> · {{ .CreatedAt }}</div>
 			<div style="white-space: pre-wrap">{{ .Content }}</div>
+			{{ if .ImageData }}
+			<div style="margin-top: 8px">
+				<img
+					src="/comment/{{ .ID }}/image"
+					alt="Изображение в комментарии"
+					style="
+						max-width: 200px;
+						max-height: 150px;
+						border-radius: 4px;
+						border: 1px solid #dee2e6;
+					"
+				/>
+			</div>
+			{{ end }}
 			<div style="margin-top: 6px">
-				<span>Лайки: {{ .Likes }} · Дизлайки: {{ .Dislikes }}</span>
-                <a href="/comment/{{ .ID }}/like?post_id={{ $.ID }}" style="margin-left: 8px">Лайк</a>
-                <a href="/comment/{{ .ID }}/dislike?post_id={{ $.ID }}" style="margin-left: 6px">Дизлайк</a>
-                <form
-                    method="POST"
-                    action="/api/delete_comment"
-                    style="display: inline; margin-left: 8px"
-                >
-					<input type="hidden" name="post_id" value="{{ $.ID }}" />
+				<span>Продвинуто: {{ .Likes }} · Не нравится: {{ .Dislikes }}</span>
+				<a
+					href="/comment/{{ .ID }}/like?post_id={{ $.Post.ID }}"
+					style="margin-left: 8px"
+					>Продвинуть</a
+				>
+				<a
+					href="/comment/{{ .ID }}/dislike?post_id={{ $.Post.ID }}"
+					style="margin-left: 6px"
+					>Не нравится</a
+				>
+				{{ if not .ParentID }}
+				<a
+					href="#reply-{{ .ID }}"
+					class="reply-link"
+					data-comment-id="{{ .ID }}"
+				>
+					💬 Ответить
+				</a>
+				{{ end }}
+				<form
+					method="POST"
+					action="/api/delete_comment"
+					style="display: inline; margin-left: 8px"
+				>
+					<input type="hidden" name="post_id" value="{{ $.Post.ID }}" />
 					<input type="hidden" name="comment_id" value="{{ .ID }}" />
 					<button type="submit">Удалить</button>
+				</form>
+			</div>
+			<!-- Форма ответа на комментарий -->
+			<div id="reply-{{ .ID }}" class="reply-form" style="display: none">
+				<form
+					method="POST"
+					action="/api/comment"
+					class="reply-form-content"
+					enctype="multipart/form-data"
+				>
+					<input type="hidden" name="post_id" value="{{ $.Post.ID }}" />
+					<input type="hidden" name="parent_id" value="{{ .ID }}" />
+					<textarea
+						name="content"
+						placeholder="Напишите ответ..."
+						required
+					></textarea>
+
+					<div class="image-upload-section">
+						<label for="reply-image-{{ .ID }}" class="image-upload-label">
+							📷 Добавить изображение
+						</label>
+						<input
+							type="file"
+							id="reply-image-{{ .ID }}"
+							name="image"
+							accept="image/*"
+							class="image-upload-input"
+						/>
+						<div
+							class="image-preview"
+							id="reply-preview-{{ .ID }}"
+							style="display: none"
+						>
+							<img src="" alt="Предпросмотр" />
+							<button
+								type="button"
+								class="remove-image"
+								data-comment-id="{{ .ID }}"
+							>
+								❌ Удалить
+							</button>
+						</div>
+					</div>
+
+					<div class="reply-buttons">
+						<button type="submit">📤 Отправить</button>
+						<button
+							type="button"
+							class="cancel-reply"
+							data-comment-id="{{ .ID }}"
+						>
+							❌ Отмена
+						</button>
+					</div>
 				</form>
 			</div>
 		</li>
@@ -65,70 +288,7 @@
 {{ end }}
 
 <script>
-// Enhance like/dislike links and comment form to avoid full page reload
-(function () {
-  // Helper to fetch JSON
-  async function fetchJSON(url, opts) {
-    const res = await fetch(url, Object.assign({ headers: { 'Accept': 'application/json' } }, opts || {}));
-    if (!res.ok) throw new Error('Request failed');
-    return res.json();
-  }
-
-  // Post like/dislike
-  const postId = '{{ .ID }}';
-  const likeLink = document.querySelector('a[href="/post/' + postId + '/like"]');
-  const dislikeLink = document.querySelector('a[href="/post/' + postId + '/dislike"]');
-  const likesHeader = document.querySelector('h3');
-  function updatePostCounts(data) {
-    if (!likesHeader) return;
-    likesHeader.textContent = 'Лайки: ' + data.likes + ' · Дизлайки: ' + data.dislikes;
-  }
-  if (likeLink) {
-    likeLink.addEventListener('click', async function (e) {
-      e.preventDefault();
-      try { const data = await fetchJSON(this.href); updatePostCounts(data); } catch (_) {}
-    });
-  }
-  if (dislikeLink) {
-    dislikeLink.addEventListener('click', async function (e) {
-      e.preventDefault();
-      try { const data = await fetchJSON(this.href); updatePostCounts(data); } catch (_) {}
-    });
-  }
-
-  // Comment like/dislike
-  document.querySelectorAll('a[href^="/comment/"]').forEach(function (a) {
-    a.addEventListener('click', async function (e) {
-      // only intercept like/dislike, not delete
-      if (!/\/comment\/\d+\/(like|dislike)/.test(this.getAttribute('href'))) return;
-      e.preventDefault();
-      try {
-        const data = await fetchJSON(this.href);
-        // find sibling span that contains "Лайки:" and update
-        const container = this.closest('li');
-        if (!container) return;
-        const span = container.querySelector('span');
-        if (span) span.textContent = 'Лайки: ' + data.likes + ' · Дизлайки: ' + data.dislikes;
-      } catch (_) {}
-    });
-  });
-
-  // Comment form submit via fetch to append without reload
-  const form = document.querySelector('form[action="/api/comment"][method="POST"]');
-  if (form) {
-    form.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const fd = new FormData(form);
-      try {
-        const res = await fetch('/api/comment', { method: 'POST', body: fd, headers: { 'Accept': 'application/json' } });
-        if (!res.ok) throw new Error();
-        // On success, just reload comments by reloading the page partially would be complex; simplest is to clear textarea
-        form.querySelector('textarea[name="content"]').value = '';
-        // Optionally, you could append the new comment HTML here if API returned full comment
-        // For now, we can soft-reload to reflect the new comment counts
-        location.reload();
-      } catch (_) {}
-    });
-  }
-})();
+	// Передаем данные поста в JavaScript
+	window.postId = parseInt('{{ .Post.ID }}') || 0
 </script>
+<script src="/static/js/post-page.js"></script>

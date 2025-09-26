@@ -10,6 +10,8 @@ import (
 type BoardService interface {
 	GetBySlug(ctx context.Context, slug string) (*entity.Board, error)
 	List(ctx context.Context) ([]entity.Board, error)
+	GetByClubID(ctx context.Context, clubID int64) ([]entity.Board, error)
+	Create(ctx context.Context, board *entity.Board) (int64, error)
 }
 
 func NewBoardService(repo repository.BoardRepository) BoardService { return &boardService{repo: repo} }
@@ -22,4 +24,21 @@ func (s *boardService) GetBySlug(ctx context.Context, slug string) (*entity.Boar
 	}
 	return s.repo.GetBySlug(ctx, slug)
 }
-func (s *boardService) List(ctx context.Context) ([]entity.Board, error) { return s.repo.List(ctx) }
+
+func (s *boardService) List(ctx context.Context) ([]entity.Board, error) {
+	return s.repo.List(ctx)
+}
+
+func (s *boardService) GetByClubID(ctx context.Context, clubID int64) ([]entity.Board, error) {
+	return s.repo.GetByClubID(ctx, clubID)
+}
+
+func (s *boardService) Create(ctx context.Context, board *entity.Board) (int64, error) {
+	if board.Title == "" {
+		return 0, errors.New("title required")
+	}
+	if board.Slug == "" {
+		return 0, errors.New("slug required")
+	}
+	return s.repo.Create(ctx, board)
+}

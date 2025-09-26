@@ -17,7 +17,7 @@ func CreatePost(p *entity.Post) error {
 	).Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
 }
 
-func GetPostByID(id int) (*entity.Post, error) {
+func GetPostByID(id int64) (*entity.Post, error) {
 	p := &entity.Post{}
 	query := `
 		SELECT id, board_id, title, content, author_id,
@@ -33,7 +33,7 @@ func GetPostByID(id int) (*entity.Post, error) {
 	return p, err
 }
 
-func GetPostsByBoard(boardID int) ([]entity.Post, error) {
+func GetPostsByBoard(boardID int64) ([]entity.Post, error) {
 	rows, err := db.DB.Query(`
 		SELECT id, board_id, title, content, author_id,
 		       created_at, updated_at, image_url, link_url
@@ -72,7 +72,7 @@ func UpdatePost(p *entity.Post) error {
 	return err
 }
 
-func DeletePost(id int) error {
+func DeletePost(id int64) error {
 	_, err := db.DB.Exec("DELETE FROM posts WHERE id=$1", id)
 	return err
 }

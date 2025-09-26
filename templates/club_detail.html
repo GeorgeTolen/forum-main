@@ -1,6 +1,254 @@
-{{ define "title" }}{{ .Name }} — Клуб{{ end }} {{ define "content" }}
-<h2>{{ .Name }}</h2>
-<p><b>Тематика:</b> {{ .Topic }}</p>
-<p>{{ .Description }}</p>
+{{ define "title" }}{{ .Club.Name }} — Клуб{{ end }} {{ define "content" }}
+<div style="display: flex; gap: 20px; margin-bottom: 20px">
+	<div style="flex: 1">
+		<h2>{{ .Club.Name }}</h2>
+		<p><b>Тематика:</b> {{ .Club.Topic }}</p>
+		<p>{{ .Club.Description }}</p>
+	</div>
+	{{ if .Club.ImageData }}
+	<div style="flex: 0 0 200px">
+		<img
+			src="/club/{{ .Club.ID }}/image"
+			alt="Изображение клуба"
+			style="
+				max-width: 200px;
+				max-height: 150px;
+				border-radius: 8px;
+				border: 1px solid #dee2e6;
+			"
+		/>
+	</div>
+	{{ end }}
+</div>
+
+<div style="margin-bottom: 20px">
+	<h3>Доски клуба</h3>
+	<div id="club-boards">
+		<!-- Доски будут загружены через JavaScript -->
+		<p>Загрузка досок...</p>
+	</div>
+
+	<div style="margin-top: 15px">
+		<button
+			onclick="checkAuthAndCreateBoard()"
+			style="
+				background: #007bff;
+				color: white;
+				border: none;
+				padding: 8px 16px;
+				border-radius: 4px;
+				cursor: pointer;
+			"
+		>
+			➕ Создать новую доску
+		</button>
+	</div>
+</div>
+
+<!-- Форма создания доски (скрыта по умолчанию) -->
+<div
+	id="create-board-form"
+	style="
+		display: none;
+		margin-top: 20px;
+		padding: 20px;
+		border: 1px solid #dee2e6;
+		border-radius: 8px;
+		background: #f8f9fa;
+	"
+>
+	<h4>Создать новую доску</h4>
+	<form id="board-form">
+		<input type="hidden" name="club_id" value="{{ .Club.ID }}" />
+		<p>
+			<label
+				>Название доски:<br />
+				<input
+					type="text"
+					name="title"
+					required
+					style="width: 100%; padding: 8px; margin-top: 4px"
+				/>
+			</label>
+		</p>
+		<p>
+			<label
+				>Slug (URL):<br />
+				<input
+					type="text"
+					name="slug"
+					required
+					style="width: 100%; padding: 8px; margin-top: 4px"
+					placeholder="например: programming"
+				/>
+			</label>
+		</p>
+		<p>
+			<label
+				>Описание:<br />
+				<textarea
+					name="description"
+					rows="3"
+					style="width: 100%; padding: 8px; margin-top: 4px"
+				></textarea>
+			</label>
+		</p>
+		<p>
+			<button
+				type="submit"
+				style="
+					background: #28a745;
+					color: white;
+					border: none;
+					padding: 8px 16px;
+					border-radius: 4px;
+					cursor: pointer;
+				"
+			>
+				Создать доску
+			</button>
+			<button
+				type="button"
+				onclick="hideCreateBoardForm()"
+				style="
+					background: #6c757d;
+					color: white;
+					border: none;
+					padding: 8px 16px;
+					border-radius: 4px;
+					cursor: pointer;
+					margin-left: 8px;
+				"
+			>
+				Отмена
+			</button>
+		</p>
+	</form>
+</div>
+
 <p><a href="/clubs">← Назад к списку клубов</a></p>
+
+<script>
+	const clubId = parseInt('{{ .Club.ID }}') || 0
+
+	function checkAuthAndCreateBoard() {
+		// Проверяем авторизацию через API
+		fetch('/api/auth/check', {
+			method: 'GET',
+			credentials: 'include',
+		})
+			.then(response => {
+				if (response.ok) {
+					// Авторизован - показываем форму
+					showCreateBoardForm()
+				} else if (response.status === 401) {
+					// Не авторизован - показываем сообщение
+					alert('Для создания доски необходимо войти в систему')
+					window.location.href = '/login'
+				} else {
+					// Другая ошибка
+					alert('Ошибка проверки авторизации')
+				}
+			})
+			.catch(error => {
+				console.error('Auth check error:', error)
+				alert('Ошибка проверки авторизации')
+			})
+	}
+
+	function showCreateBoardForm() {
+		document.getElementById('create-board-form').style.display = 'block'
+	}
+
+	function hideCreateBoardForm() {
+		document.getElementById('create-board-form').style.display = 'none'
+		document.getElementById('board-form').reset()
+	}
+
+	// Загрузка досок клуба
+	function loadClubBoards() {
+		console.log('Loading boards for club:', clubId)
+		fetch(`/api/clubs/${clubId}/boards`)
+			.then(response => {
+				console.log('Boards response status:', response.status)
+				if (!response.ok) {
+					throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+				}
+				return response.json()
+			})
+			.then(boards => {
+				console.log('Loaded boards:', boards)
+				const container = document.getElementById('club-boards')
+				if (boards.length === 0) {
+					container.innerHTML = '<p>В этом клубе пока нет досок.</p>'
+					return
+				}
+
+				let html = '<ul style="list-style: none; padding: 0;">'
+				boards.forEach(board => {
+					html += `
+						<li style="border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: white;">
+							<h4 style="margin: 0 0 8px 0;"><a href="/boards/${
+								board.slug
+							}" style="text-decoration: none; color: #007bff;">${
+						board.title
+					}</a></h4>
+							<p style="margin: 0; color: #6c757d; font-size: 14px;">${
+								board.description || 'Без описания'
+							}</p>
+						</li>
+					`
+				})
+				html += '</ul>'
+				container.innerHTML = html
+			})
+			.catch(error => {
+				console.error('Error loading boards:', error)
+				document.getElementById('club-boards').innerHTML =
+					'<p>Ошибка загрузки досок: ' + error.message + '</p>'
+			})
+	}
+
+	// Обработка создания доски
+	document
+		.getElementById('board-form')
+		.addEventListener('submit', function (e) {
+			e.preventDefault()
+
+			const formData = new FormData(this)
+
+			// Отладочная информация
+			console.log('Form data:')
+			for (let [key, value] of formData.entries()) {
+				console.log(key, value)
+			}
+
+			fetch('/api/boards', {
+				method: 'POST',
+				body: formData,
+			})
+				.then(response => {
+					console.log('Response status:', response.status)
+					if (response.ok) {
+						hideCreateBoardForm()
+						loadClubBoards() // Перезагружаем список досок
+					} else if (response.status === 401) {
+						alert('Необходимо войти в систему для создания досок')
+						window.location.href = '/login'
+					} else {
+						return response.text().then(text => {
+							console.error('Error response:', text)
+							alert('Ошибка при создании доски: ' + text)
+						})
+					}
+				})
+				.catch(error => {
+					console.error('Error:', error)
+					alert('Ошибка при создании доски: ' + error.message)
+				})
+		})
+
+	// Загружаем доски при загрузке страницы
+	document.addEventListener('DOMContentLoaded', loadClubBoards)
+</script>
 {{ end }}

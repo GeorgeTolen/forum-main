@@ -21,8 +21,8 @@ type clubRepository struct {
 }
 
 func (r *clubRepository) Create(ctx context.Context, club *entity.Club) (int64, error) {
-	query := `INSERT INTO clubs (name, topic, description) VALUES ($1, $2, $3) RETURNING id`
-	err := r.db.QueryRowContext(ctx, query, club.Name, club.Topic, club.Description).Scan(&club.ID)
+	query := `INSERT INTO clubs (name, topic, description, image_data) VALUES ($1, $2, $3, $4) RETURNING id`
+	err := r.db.QueryRowContext(ctx, query, club.Name, club.Topic, club.Description, club.ImageData).Scan(&club.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -30,18 +30,18 @@ func (r *clubRepository) Create(ctx context.Context, club *entity.Club) (int64, 
 }
 
 func (r *clubRepository) GetByID(ctx context.Context, id int64) (*entity.Club, error) {
-	query := `SELECT id, name, topic, description FROM clubs WHERE id=$1`
+	query := `SELECT id, name, topic, description, image_data FROM clubs WHERE id=$1`
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var c entity.Club
-	if err := row.Scan(&c.ID, &c.Name, &c.Topic, &c.Description); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.Topic, &c.Description, &c.ImageData); err != nil {
 		return nil, err
 	}
 	return &c, nil
 }
 
 func (r *clubRepository) List(ctx context.Context) ([]entity.Club, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name, topic, description FROM clubs ORDER BY name`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, topic, description, image_data FROM clubs ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (r *clubRepository) List(ctx context.Context) ([]entity.Club, error) {
 	var res []entity.Club
 	for rows.Next() {
 		var c entity.Club
-		if err := rows.Scan(&c.ID, &c.Name, &c.Topic, &c.Description); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Topic, &c.Description, &c.ImageData); err != nil {
 			return nil, err
 		}
 		res = append(res, c)

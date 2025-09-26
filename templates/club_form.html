@@ -1,6 +1,6 @@
 {{ define "title" }}Создать новый клуб{{ end }} {{ define "content" }}
 <h2>Создать новый клуб</h2>
-<form method="POST" action="/clubs">
+<form method="POST" action="/clubs" enctype="multipart/form-data">
 	<p>
 		<label
 			>Название:<br />
@@ -17,6 +17,12 @@
 		<label
 			>Описание:<br />
 			<textarea name="description" rows="4" cols="40"></textarea>
+		</label>
+	</p>
+	<p>
+		<label
+			>Изображение клуба:<br />
+			<input type="file" name="image" accept="image/*" />
 		</label>
 	</p>
 	<p>

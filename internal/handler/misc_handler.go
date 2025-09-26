@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"database/sql"
+	"encoding/json"
 	"fmt"
 	"forum1/db"
 	"forum1/internal/entity"
@@ -19,6 +19,7 @@ type PageHandler struct {
 	posts    service.PostService
 	boards   service.BoardService
 	comments service.CommentService
+	clubs    service.ClubService
 }
 
 // WithComments allows injecting CommentService fluently after construction
@@ -27,64 +28,141 @@ func (h *PageHandler) WithComments(c service.CommentService) *PageHandler {
 	return h
 }
 
+// WithClubs allows injecting ClubService fluently after construction
+func (h *PageHandler) WithClubs(c service.ClubService) *PageHandler {
+	h.clubs = c
+	return h
+}
+
 func NewPageHandler(p service.PostService, b service.BoardService) *PageHandler {
 	// Backwards-compatible constructor; comments can be injected later if needed
 	return &PageHandler{posts: p, boards: b}
 }
 
-func (h *PageHandler) HomePageHTML(w http.ResponseWriter, r *http.Request) {
-	// Load boards for sidebar/home
-	boards, _ := h.boards.List(r.Context())
+func (h *PageHandler) HomePage(w http.ResponseWriter, r *http.Request) {
+	posts, err := h.posts.GetAllPosts(r.Context())
+	if err != nil {
+		http.Error(w, "Ошибка загрузки постов", http.StatusInternalServerError)
+		return
+	}
+
+	boards, err := h.boards.List(r.Context())
+	if err != nil {
+		http.Error(w, "Ошибка загрузки досок", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]interface{}{
 		"Boards": boards,
+		"Posts":  posts,
 	}
+
+	// Решаем формат
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
+		return
+	}
+
+	// по умолчанию — HTML
 	utils.RenderTemplate(w, "home_page.html", data)
 }
 
 func (h *PageHandler) BoardsListPage(w http.ResponseWriter, r *http.Request) {
-	boards, _ := h.boards.List(r.Context())
+	boards, err := h.boards.List(r.Context())
+	if err != nil {
+		http.Error(w, "Ошибка загрузки досок", http.StatusInternalServerError)
+		return
+	}
+
 	data := map[string]interface{}{"Boards": boards}
+
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
+		return
+	}
+
 	utils.RenderTemplate(w, "boards_list_page.html", data)
 }
 
 func (h *PageHandler) BoardPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slug := vars["slug"]
-	b, err := h.boards.GetBySlug(r.Context(), slug)
+
+	board, err := h.boards.GetBySlug(r.Context(), slug)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	posts, _ := h.posts.GetPostsByBoard(r.Context(), int64(b.ID))
-	data := map[string]interface{}{"Board": b, "Posts": posts}
+
+	posts, err := h.posts.GetPostsByBoard(r.Context(), int64(board.ID))
+	if err != nil {
+		http.Error(w, "Ошибка загрузки постов", http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		Board *entity.Board `json:"board"`
+		Posts []entity.Post `json:"posts"`
+	}{
+		Board: board,
+		Posts: posts,
+	}
+
+	// JSON API
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(data)
+		return
+	}
+
+	// HTML рендеринг
 	utils.RenderTemplate(w, "board_page.html", data)
 }
 
-func (h *PageHandler) PostPageHTML(w http.ResponseWriter, r *http.Request) {
+func (h *PageHandler) PostPage(w http.ResponseWriter, r *http.Request) {
+	var id int64
 	vars := mux.Vars(r)
 	idStr := vars["id"]
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-	post, _ := h.posts.GetPostByID(r.Context(), id)
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
 
-	// Load comments with like/dislike counters
+	post, err := h.posts.GetPostByID(r.Context(), id)
+	if err != nil || post == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Загружаем комментарии через сервис
 	var comments []entity.Comment
 	if h.comments != nil {
-		cs, _ := h.comments.GetCommentsByPost(r.Context(), id)
-		comments = cs
-	} else {
-		// fallback to models
-		comments, _ = models.GetCommentsByPost(int(id))
+		comments, _ = h.comments.GetCommentsByPost(r.Context(), id)
 	}
-	if post != nil {
-		post.Comments = comments
-		// Load like/dislike counters for the post via service
-		if likes, dislikes, err := h.posts.GetPostVotes(r.Context(), id); err == nil {
-			post.Likes, post.Dislikes = likes, dislikes
-		}
+	post.Comments = comments
+
+	// Лайки/дизлайки поста
+	if likes, dislikes, err := h.posts.GetPostVotes(r.Context(), id); err == nil {
+		post.Likes, post.Dislikes = likes, dislikes
 	}
 
-	// Pass the post as root context as expected by the template
-	utils.RenderTemplate(w, "post_page.html", post)
+	data := map[string]interface{}{
+		"Post": post,
+	}
+
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(data)
+		return
+	}
+
+	utils.RenderTemplate(w, "post_page.html", data)
 }
 
 func (h *PageHandler) ProfilePageHTML(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +188,26 @@ func (h *PageHandler) BoardsSearchPageHTML(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *PageHandler) SearchPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "search_page.html", map[string]interface{}{})
+	query := r.URL.Query().Get("q")
+
+	var data map[string]interface{}
+	if query != "" {
+		results, err := models.SearchAll(query)
+		if err != nil {
+			http.Error(w, "Search error", http.StatusInternalServerError)
+			return
+		}
+		data = results
+	} else {
+		data = map[string]interface{}{
+			"posts":  []entity.Post{},
+			"boards": []entity.Board{},
+			"clubs":  []entity.Club{},
+			"query":  "",
+		}
+	}
+
+	utils.RenderTemplate(w, "search_page.html", data)
 }
 
 func (h *PageHandler) SettingsPageHTML(w http.ResponseWriter, r *http.Request) {
@@ -129,17 +226,14 @@ func (h *PageHandler) NotificationsPageHTML(w http.ResponseWriter, r *http.Reque
 func (h *PageHandler) PostImage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		http.Error(w, "bad id", http.StatusBadRequest)
 		return
 	}
-	p, err := models.GetPostByID(id)
-	if err == sql.ErrNoRows {
+	p, err := h.posts.GetPostByID(r.Context(), id)
+	if err != nil || p == nil {
 		http.NotFound(w, r)
-		return
-	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(p.ImageData) == 0 {
@@ -150,6 +244,62 @@ func (h *PageHandler) PostImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", ct)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(p.ImageData)
+}
+
+// Serve comment image as /comment/{id}/image
+func (h *PageHandler) CommentImage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем комментарий через сервис
+	comment, err := h.comments.GetCommentByID(r.Context(), id)
+	if err != nil || comment == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if len(comment.ImageData) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	ct := http.DetectContentType(comment.ImageData)
+	w.Header().Set("Content-Type", ct)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(comment.ImageData)
+}
+
+// Serve club image as /club/{id}/image
+func (h *PageHandler) ClubImage(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "bad id", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем клуб через сервис
+	club, err := h.clubs.GetByID(r.Context(), id)
+	if err != nil || club == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	if len(club.ImageData) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	ct := http.DetectContentType(club.ImageData)
+	w.Header().Set("Content-Type", ct)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(club.ImageData)
 }
 
 // Like/Dislike post via GET links
@@ -179,19 +329,19 @@ func (h *PageHandler) votePost(w http.ResponseWriter, r *http.Request, value int
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	var userID int
+	var userID int64
 	if err := db.DB.QueryRow("SELECT id FROM users WHERE username=$1", cookie.Value).Scan(&userID); err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	postID, _ := strconv.Atoi(idStr)
-	if err := h.posts.SetPostVote(r.Context(), int64(postID), int64(userID), value); err != nil {
+	postID, _ := strconv.ParseInt(idStr, 10, 64)
+	if err := h.posts.SetPostVote(r.Context(), postID, userID, value); err != nil {
 		http.Error(w, "vote error", http.StatusInternalServerError)
 		return
 	}
 	// If client expects JSON (AJAX), return new counters
 	if acceptsJSON(r) {
-		likes, dislikes, _ := h.posts.GetPostVotes(r.Context(), int64(postID))
+		likes, dislikes, _ := h.posts.GetPostVotes(r.Context(), postID)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(fmt.Sprintf(`{"likes":%d,"dislikes":%d}`, likes, dislikes)))
@@ -209,14 +359,14 @@ func (h *PageHandler) voteComment(w http.ResponseWriter, r *http.Request, value 
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	var userID int
+	var userID int64
 	if err := db.DB.QueryRow("SELECT id FROM users WHERE username=$1", cookie.Value).Scan(&userID); err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	cid, _ := strconv.Atoi(commentIDStr)
+	cid, _ := strconv.ParseInt(commentIDStr, 10, 64)
 	if h.comments != nil {
-		if err := h.comments.SetCommentVote(r.Context(), int64(cid), int64(userID), value); err != nil {
+		if err := h.comments.SetCommentVote(r.Context(), cid, userID, value); err != nil {
 			http.Error(w, "vote error", http.StatusInternalServerError)
 			return
 		}
@@ -228,7 +378,7 @@ func (h *PageHandler) voteComment(w http.ResponseWriter, r *http.Request, value 
 	if acceptsJSON(r) {
 		var likes, dislikes int
 		if h.comments != nil {
-			likes, dislikes, _ = h.comments.GetCommentVotes(r.Context(), int64(cid))
+			likes, dislikes, _ = h.comments.GetCommentVotes(r.Context(), cid)
 		} else {
 			_ = db.DB.QueryRow(`SELECT COALESCE(SUM(CASE WHEN value=1 THEN 1 ELSE 0 END),0), COALESCE(SUM(CASE WHEN value=-1 THEN 1 ELSE 0 END),0) FROM comment_votes WHERE comment_id=$1`, cid).Scan(&likes, &dislikes)
 		}
@@ -242,6 +392,14 @@ func (h *PageHandler) voteComment(w http.ResponseWriter, r *http.Request, value 
 		return
 	}
 	http.Redirect(w, r, "/post/"+postID, http.StatusSeeOther)
+}
+
+func (h *PageHandler) EducationPageHTML(w http.ResponseWriter, r *http.Request) {
+	utils.RenderTemplate(w, "education_page.html", nil)
+}
+
+func (h *PageHandler) TitlePageHTML(w http.ResponseWriter, r *http.Request) {
+	utils.RenderTemplate(w, "title_page.html", nil)
 }
 
 // acceptsJSON returns true if request Accept header prefers JSON

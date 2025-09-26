@@ -3,11 +3,11 @@ package entity
 import "time"
 
 type Post struct {
-	ID        int       `json:"id"`
+	ID        int64     `json:"id"`
 	Title     string    `json:"title"`
-	BoardID   int       `json:"board_id"`
+	BoardID   int64     `json:"board_id"`
 	Content   string    `json:"content"`
-	AuthorID  int       `json:"author_id"`
+	AuthorID  int64     `json:"author_id"`
 	ImageURL  string    `json:"image_url,omitempty"`
 	LinkURL   string    `json:"link_url,omitempty"`
 	ImageData []byte    `json:"-"`

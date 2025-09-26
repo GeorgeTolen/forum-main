@@ -5,8 +5,10 @@ import (
 	"forum1/internal/entity"
 	"forum1/internal/repository"
 	"forum1/internal/service"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type CommentHandler struct {
@@ -19,9 +21,8 @@ func NewCommentHandler(svc service.CommentService, users repository.UserReposito
 	return &CommentHandler{svc: svc, users: users}
 }
 
-// CreateComment accepts either JSON or form (multipart/urlencoded)
 func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
-	// Resolve author from cookie
+	// Авторизация
 	c, errCookie := r.Cookie("user")
 	if errCookie != nil || c.Value == "" {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -33,17 +34,23 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// JSON
-	if ct := r.Header.Get("Content-Type"); ct != "" && (ct == "application/json" || ct[:16] == "application/json") {
+	// JSON-запрос
+	if r.Header.Get("Content-Type") == "application/json" {
 		var in struct {
-			PostID  int64  `json:"post_id"`
-			Content string `json:"content"`
+			PostID   int64  `json:"post_id"`
+			Content  string `json:"content"`
+			ParentID *int64 `json:"parent_id,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
-		cmt := &entity.Comment{PostID: in.PostID, AuthorID: u.ID, Content: in.Content}
+		cmt := &entity.Comment{
+			PostID:   in.PostID,
+			AuthorID: u.ID,
+			Content:  in.Content,
+			ParentID: in.ParentID,
+		}
 		id, err := h.svc.CreateComment(r.Context(), cmt)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -54,26 +61,59 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Form
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", http.StatusBadRequest)
-		return
+	// Form-запрос с поддержкой multipart/form-data
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			http.Error(w, "bad multipart form", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "bad form", http.StatusBadRequest)
+			return
+		}
 	}
 	postID, _ := strconv.ParseInt(r.FormValue("post_id"), 10, 64)
 	content := r.FormValue("content")
-	cmt := &entity.Comment{PostID: postID, AuthorID: u.ID, Content: content}
+
+	// 👇 обработка parent_id (может быть пустым)
+	var parentID *int64
+	if pid := r.FormValue("parent_id"); pid != "" {
+		if val, err := strconv.ParseInt(pid, 10, 64); err == nil {
+			parentID = &val
+		}
+	}
+
+	// Обработка изображения
+	var imageData []byte
+	file, _, err := r.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+		imageData, _ = io.ReadAll(file)
+	}
+
+	cmt := &entity.Comment{
+		PostID:    postID,
+		AuthorID:  u.ID,
+		Content:   content,
+		ImageData: imageData,
+		ParentID:  parentID,
+	}
 	id, err := h.svc.CreateComment(r.Context(), cmt)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// If client expects JSON (AJAX), return created info
-	if r.Header.Get("Accept") != "" && (r.Header.Get("Accept") == "application/json" || r.Header.Get("Accept")[:16] == "application/json") {
+
+	// Если ожидается JSON (AJAX)
+	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{"id": id})
 		return
 	}
-	// Redirect back to the post page
+
+	// Редирект обратно на пост
 	http.Redirect(w, r, "/post/"+strconv.FormatInt(postID, 10), http.StatusSeeOther)
 }
 

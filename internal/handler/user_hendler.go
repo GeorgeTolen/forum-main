@@ -42,7 +42,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Неверные данные", http.StatusUnauthorized)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "user", Value: u.Username, Path: "/", HttpOnly: true})
+	http.SetCookie(w, &http.Cookie{Name: "user", Value: u.Username, Path: "/"})
 	if r.Header.Get("Accept") == "application/json" {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 		return

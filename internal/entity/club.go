@@ -5,4 +5,5 @@ type Club struct {
 	Name        string `json:"name"`
 	Topic       string `json:"topic"`
 	Description string `json:"description"`
+	ImageData   []byte `json:"-"`
 }

@@ -5,4 +5,5 @@ type Board struct {
 	Slug        string `json:"slug"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	ClubID      *int64 `json:"club_id,omitempty"`
 }

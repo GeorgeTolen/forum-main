@@ -5,8 +5,10 @@ import (
 	"forum1/internal/entity"
 	"forum1/internal/service"
 	"forum1/utils"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -85,9 +87,21 @@ func (h *ClubPageHandler) ListPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Проверяем авторизацию пользователя (как в PostHandler)
+	var user interface{}
+	c, errCookie := r.Cookie("user")
+	if errCookie == nil && c.Value != "" {
+		user = map[string]string{"username": c.Value}
+	}
+
+	data := map[string]interface{}{
+		"Clubs": clubs,
+		"User":  user,
+	}
+
 	// Render with shared layout
-	// Root context is a slice to iterate in template
-	utils.RenderTemplate(w, "clubs.html", clubs)
+	utils.RenderTemplate(w, "clubs.html", data)
 }
 
 // GET /boards/club/{id}
@@ -104,8 +118,21 @@ func (h *ClubPageHandler) DetailPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+
+	// Проверяем авторизацию пользователя (как в PostHandler)
+	var user interface{}
+	c, errCookie := r.Cookie("user")
+	if errCookie == nil && c.Value != "" {
+		user = map[string]string{"username": c.Value}
+	}
+
+	data := map[string]interface{}{
+		"Club": club,
+		"User": user,
+	}
+
 	// Render with shared layout
-	utils.RenderTemplate(w, "club_detail.html", club)
+	utils.RenderTemplate(w, "club_detail.html", data)
 }
 
 // GET /clubs/new
@@ -115,15 +142,40 @@ func (h *ClubPageHandler) NewPage(w http.ResponseWriter, r *http.Request) {
 
 // POST /clubs (HTML-форма)
 func (h *ClubPageHandler) CreatePage(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
+	// Проверка авторизации (как в PostHandler)
+	c, errCookie := r.Cookie("user")
+	if errCookie != nil || c.Value == "" {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
+	}
+
+	// Поддержка multipart/form-data для загрузки изображений
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "multipart/form-data") {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			http.Error(w, "invalid multipart form", http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
 	}
 
 	club := entity.Club{
 		Name:        r.FormValue("name"),
 		Topic:       r.FormValue("topic"),
 		Description: r.FormValue("description"),
+	}
+
+	// Обработка изображения
+	var imageData []byte
+	file, _, err := r.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+		imageData, _ = io.ReadAll(file)
+		club.ImageData = imageData
 	}
 
 	id, err := h.service.Create(r.Context(), &club)

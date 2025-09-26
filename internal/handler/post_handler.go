@@ -69,7 +69,13 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	p := &entity.Post{BoardID: int(boardID), Title: title, Content: content, AuthorID: int(u.ID), ImageData: imageData}
+	p := &entity.Post{
+		BoardID:   boardID, // ✅ теперь int64
+		Title:     title,
+		Content:   content,
+		AuthorID:  u.ID, // тоже лучше хранить int64, как в entity.User
+		ImageData: imageData,
+	}
 	id, err := h.svc.CreatePost(r.Context(), p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

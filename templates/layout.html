@@ -98,24 +98,25 @@
 	</head>
 	<script>
 		function filterMain() {
-			let input = document
-				.getElementById('main-search-input')
-				.value.toLowerCase()
-			let posts = document.querySelectorAll('main .post') // ищем только посты
-			posts.forEach(post => {
-				let text = post.innerText.toLowerCase()
-				if (text.includes(input)) {
-					post.style.display = ''
-				} else {
-					post.style.display = 'none'
-				}
-			})
+			let input = document.getElementById('main-search-input').value.trim()
+
+			if (input === '') {
+				return
+			}
+
+			// Перенаправляем на страницу поиска
+			window.location.href = '/search?q=' + encodeURIComponent(input)
 		}
 
-		// Реакция "на лету"
+		// Обработка Enter в поле поиска
 		document
 			.getElementById('main-search-input')
-			.addEventListener('input', filterMain)
+			.addEventListener('keypress', function (e) {
+				if (e.key === 'Enter') {
+					e.preventDefault()
+					filterMain()
+				}
+			})
 	</script>
 
 	<body>
@@ -130,7 +131,9 @@
 			<!-- Левое меню -->
 			<nav>
 				<h3>Навигация</h3>
-				<a href="/">Главная</a> <a href="/boards">Доски</a>
+				<a href="/">Главная</a>
+				<a href="/boards">Доски</a>
+				<a href="/clubs">Клубы</a>
 				<a href="/profile/1">Профиль</a>
 				<a href="/create-post">Создать пост</a>
 				<a href="/login">Войти</a>
@@ -141,9 +144,6 @@
 			<!-- Правая колонка -->
 			<aside>
 				<h4>Категории</h4>
-				<div class="category"><a href="/board/title">Title</a></div>
-				<div class="category"><a href="/board/education">Education</a></div>
-				<div class="category"><a href="/clubs">Clubs</a></div>
 				<div class="category"><a href="/board/news">News</a></div>
 				<div class="category"><a href="/board/reviews">Reviews</a></div>
 			</aside>

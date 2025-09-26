@@ -23,24 +23,23 @@ func NewCommentRepository(db *sql.DB) CommentRepository {
 type commentRepository struct{ db *sql.DB }
 
 func (r *commentRepository) CreateComment(ctx context.Context, c *entity.Comment) (int64, error) {
+	query := `INSERT INTO comments (post_id, author_id, content, image_data, parent_id) 
+	          VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	var id int64
-	err := r.db.QueryRowContext(ctx, `
-        INSERT INTO comments (post_id, author_id, content)
-        VALUES ($1,$2,$3)
-        RETURNING id`, c.PostID, c.AuthorID, c.Content,
-	).Scan(&id)
+	err := r.db.QueryRowContext(ctx, query, c.PostID, c.AuthorID, c.Content, c.ImageData, c.ParentID).Scan(&id)
 	return id, err
 }
+
 func (r *commentRepository) GetCommentsByPost(ctx context.Context, postID int64) ([]entity.Comment, error) {
 	rows, err := r.db.QueryContext(ctx, `
-        SELECT c.id, c.post_id, c.author_id, c.content, c.created_at, c.updated_at,
+        SELECT c.id, c.post_id, c.author_id, c.content, c.image_data, c.parent_id, c.created_at, c.updated_at,
                COALESCE(SUM(CASE WHEN cv.value=1 THEN 1 ELSE 0 END),0) AS likes,
                COALESCE(SUM(CASE WHEN cv.value=-1 THEN 1 ELSE 0 END),0) AS dislikes
         FROM comments c
         LEFT JOIN comment_votes cv ON cv.comment_id = c.id
         WHERE c.post_id = $1
-        GROUP BY c.id
-        ORDER BY c.created_at ASC`, postID)
+        GROUP BY c.id, c.parent_id, c.image_data
+        ORDER BY c.parent_id NULLS FIRST, c.created_at ASC`, postID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +47,12 @@ func (r *commentRepository) GetCommentsByPost(ctx context.Context, postID int64)
 	var out []entity.Comment
 	for rows.Next() {
 		var c entity.Comment
-		if err := rows.Scan(&c.ID, &c.PostID, &c.AuthorID, &c.Content, &c.CreatedAt, &c.UpdatedAt, &c.Likes, &c.Dislikes); err != nil {
+		var parentID sql.NullInt64
+		if err := rows.Scan(&c.ID, &c.PostID, &c.AuthorID, &c.Content, &c.ImageData, &parentID, &c.CreatedAt, &c.UpdatedAt, &c.Likes, &c.Dislikes); err != nil {
 			return nil, err
+		}
+		if parentID.Valid {
+			c.ParentID = &parentID.Int64
 		}
 		out = append(out, c)
 	}
