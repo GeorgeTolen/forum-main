@@ -51,27 +51,40 @@ func CloseDB() {
 }
 
 func runMigrations(db *sql.DB) error {
-	// Try likely migration paths depending on working directory
-	candidates := []string{
-		filepath.Join("migrations", "001_init.sql"),             // run from repo root
-		filepath.Join("..", "migrations", "001_init.sql"),       // run from cmd/forum
-		filepath.Join("..", "..", "migrations", "001_init.sql"), // run from deeper dirs
+	migrationFiles := []string{
+		"001_init.sql",
+		"002_friends_chat.sql",
 	}
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			bytes, err := ioutil.ReadFile(path)
-			if err != nil {
-				return fmt.Errorf("read migration %s: %w", path, err)
-			}
-			if _, err := db.Exec(string(bytes)); err != nil {
-				return fmt.Errorf("apply migration %s: %w", path, err)
-			}
-			return nil
+
+	dirs := []string{
+		"migrations",
+		filepath.Join("..", "migrations"),
+		filepath.Join("..", "..", "migrations"),
+	}
+
+	var migDir string
+	for _, d := range dirs {
+		if _, err := os.Stat(filepath.Join(d, migrationFiles[0])); err == nil {
+			migDir = d
+			break
 		}
 	}
-	// fallback minimal ensures (valid syntax for PostgreSQL)
-	if _, err := db.Exec(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_data BYTEA`); err != nil {
-		return fmt.Errorf("fallback migration failed: %w", err)
+	if migDir == "" {
+		if _, err := db.Exec(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_data BYTEA`); err != nil {
+			return fmt.Errorf("fallback migration failed: %w", err)
+		}
+		return nil
+	}
+
+	for _, f := range migrationFiles {
+		path := filepath.Join(migDir, f)
+		bytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read migration %s: %w", path, err)
+		}
+		if _, err := db.Exec(string(bytes)); err != nil {
+			return fmt.Errorf("apply migration %s: %w", path, err)
+		}
 	}
 	return nil
 }

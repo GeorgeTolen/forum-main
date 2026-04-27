@@ -1,0 +1,103 @@
+{{ define "title" }}Chat with {{ .Friend.Username }}{{ end }}
+{{ define "content" }}
+<div style="display: flex; flex-direction: column; height: calc(100vh - 160px);">
+    <!-- Header -->
+    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid #ddd;">
+        <a href="/chat" style="text-decoration: none; color: #2980b9;">&larr; Back</a>
+        <strong>{{ .Friend.Username }}</strong>
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px;">
+        {{ range .Messages }}
+        <div style="max-width: 70%; padding: 10px 14px; border-radius: 12px; word-wrap: break-word;
+            {{ if eq .SenderID $.User.ID }}
+                align-self: flex-end; background: #2980b9; color: white;
+            {{ else }}
+                align-self: flex-start; background: #f0f0f0; color: #333;
+            {{ end }}">
+            <div>{{ .Content }}</div>
+            <div style="font-size: 11px; margin-top: 4px; opacity: 0.7;">{{ .CreatedAt.Format "15:04" }}</div>
+        </div>
+        {{ end }}
+    </div>
+
+    <!-- Input -->
+    <div style="display: flex; gap: 8px; padding: 10px; border-top: 1px solid #ddd;">
+        <input type="text" id="chat-input" placeholder="Type a message..."
+               style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px; outline: none;" />
+        <button id="chat-send" style="padding: 10px 20px; background: #2980b9; color: white; border: none; border-radius: 20px; cursor: pointer;">Send</button>
+    </div>
+</div>
+
+<script>
+const currentUserID = {{ .User.ID }};
+const friendID = {{ .Friend.ID }};
+const messagesDiv = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const sendBtn = document.getElementById('chat-send');
+
+// Scroll to bottom
+messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+// WebSocket
+const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+const socket = new WebSocket(proto + '//' + location.host + '/ws/chat');
+
+socket.onopen = function() {
+    console.log('WebSocket connected');
+};
+
+socket.onmessage = function(event) {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'message') {
+        if (msg.sender_id === friendID || msg.sender_id === currentUserID) {
+            appendMessage(msg);
+        }
+    }
+};
+
+socket.onclose = function() {
+    console.log('WebSocket disconnected');
+};
+
+function appendMessage(msg) {
+    const div = document.createElement('div');
+    div.style.cssText = 'max-width:70%;padding:10px 14px;border-radius:12px;word-wrap:break-word;';
+    if (msg.sender_id === currentUserID) {
+        div.style.cssText += 'align-self:flex-end;background:#2980b9;color:white;';
+    } else {
+        div.style.cssText += 'align-self:flex-start;background:#f0f0f0;color:#333;';
+    }
+
+    const time = new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    div.innerHTML = '<div>' + escapeHtml(msg.content) + '</div>' +
+                    '<div style="font-size:11px;margin-top:4px;opacity:0.7;">' + time + '</div>';
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function sendMessage() {
+    const content = chatInput.value.trim();
+    if (!content || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(JSON.stringify({
+        type: 'message',
+        receiver_id: friendID,
+        content: content
+    }));
+    chatInput.value = '';
+}
+
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+});
+
+function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+</script>
+{{ end }}

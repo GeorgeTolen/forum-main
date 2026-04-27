@@ -6,9 +6,9 @@ import (
 	handler "forum1/internal/handler"
 	"forum1/internal/handlers"
 	"forum1/internal/repository"
-
 	"forum1/internal/router"
 	"forum1/internal/service"
+	"forum1/internal/ws"
 	"net/http"
 	"time"
 
@@ -48,6 +48,20 @@ func Run() {
 	clubAPIHandler := handler.NewClubHandler(clubService)
 	boardAPIHandler := handlers.NewBoardAPIHandler(boardService)
 
+	// Friends
+	friendshipRepo := repository.NewFriendshipRepository(database)
+	friendshipService := service.NewFriendshipService(friendshipRepo)
+	friendshipPageHandler := handler.NewFriendshipPageHandler(friendshipService, userRepo)
+	friendshipAPIHandler := handler.NewFriendshipAPIHandler(friendshipService, userRepo)
+
+	// Chat
+	messageRepo := repository.NewMessageRepository(database)
+	chatService := service.NewChatService(messageRepo, friendshipService)
+	chatHub := ws.NewHub()
+	go chatHub.Run()
+	chatPageHandler := handler.NewChatPageHandler(chatService, userRepo, chatHub)
+	chatAPIHandler := handler.NewChatAPIHandler(chatService, userRepo, chatHub)
+
 	// слой router
 	r := router.NewRouter(postHandler)
 	// HTML routes for templates
@@ -82,8 +96,20 @@ func Run() {
 	r.HandleFunc("/boards/search", pageHandler.BoardsSearchPageHTML).Methods(http.MethodGet)
 	r.HandleFunc("/search", pageHandler.SearchPageHTML).Methods(http.MethodGet)
 	r.HandleFunc("/settings", pageHandler.SettingsPageHTML).Methods(http.MethodGet)
-	r.HandleFunc("/messages", pageHandler.MessagesPageHTML).Methods(http.MethodGet)
 	r.HandleFunc("/notifications", pageHandler.NotificationsPageHTML).Methods(http.MethodGet)
+
+	// Friends pages
+	r.HandleFunc("/friends", friendshipPageHandler.FriendsPage).Methods(http.MethodGet)
+
+	// Chat pages
+	r.HandleFunc("/chat", chatPageHandler.ChatListPage).Methods(http.MethodGet)
+	r.HandleFunc("/chat/{friendID:[0-9]+}", chatPageHandler.ChatPage).Methods(http.MethodGet)
+	r.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/chat", http.StatusMovedPermanently)
+	}).Methods(http.MethodGet)
+
+	// WebSocket
+	r.HandleFunc("/ws/chat", chatAPIHandler.HandleWebSocket)
 
 	// CORS (dev permissive)
 	r.Use(func(next http.Handler) http.Handler {
@@ -132,6 +158,17 @@ func Run() {
 	api.HandleFunc("/auth/check", boardAPIHandler.CheckAuth).Methods(http.MethodGet)
 	// Search API
 	api.HandleFunc("/search", boardAPIHandler.SearchAll).Methods(http.MethodGet)
+
+	// Friends API
+	api.HandleFunc("/friends/search", friendshipAPIHandler.SearchUsers).Methods(http.MethodGet)
+	api.HandleFunc("/friends/request", friendshipAPIHandler.SendRequest).Methods(http.MethodPost)
+	api.HandleFunc("/friends/accept", friendshipAPIHandler.AcceptRequest).Methods(http.MethodPost)
+	api.HandleFunc("/friends/decline", friendshipAPIHandler.DeclineRequest).Methods(http.MethodPost)
+	api.HandleFunc("/friends/remove", friendshipAPIHandler.RemoveFriend).Methods(http.MethodDelete)
+
+	// Chat API
+	api.HandleFunc("/chat/{friendID:[0-9]+}/messages", chatAPIHandler.GetMessages).Methods(http.MethodGet)
+	api.HandleFunc("/chat/{friendID:[0-9]+}/read", chatAPIHandler.MarkAsRead).Methods(http.MethodPost)
 
 	fmt.Println("Server is running on http://localhost:8080")
 	http.ListenAndServe(":8080", r)
