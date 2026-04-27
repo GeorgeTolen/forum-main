@@ -27,9 +27,7 @@
 				{{ .Title }}
 			</a>
 		</h4>
-		<small style="color: #999"
-			>Автор ID: {{ .AuthorID }} · {{ .CreatedAt }}</small
-		>
+		<small style="color: #999">by {{ if .AuthorName }}{{ .AuthorName }}{{ else }}User #{{ .AuthorID }}{{ end }} · {{ .CreatedAt.Format "02.01.2006 15:04" }}</small>
 		<p style="margin: 12px 0; color: #333; white-space: pre-wrap">
 			{{ .Content }}
 		</p>

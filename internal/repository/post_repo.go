@@ -27,9 +27,11 @@ type postRepository struct {
 
 func (r *postRepository) GetAllPosts(ctx context.Context) ([]entity.Post, error) {
 	rows, err := r.db.QueryContext(ctx, `
-        SELECT id, board_id, title, content, author_id, image_url, image_data, link_url, created_at, updated_at
-        FROM posts
-        ORDER BY created_at DESC`)
+        SELECT p.id, p.board_id, p.title, p.content, p.author_id, u.username,
+               p.image_url, p.image_data, p.link_url, p.created_at, p.updated_at
+        FROM posts p
+        JOIN users u ON u.id = p.author_id
+        ORDER BY p.created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -39,18 +41,14 @@ func (r *postRepository) GetAllPosts(ctx context.Context) ([]entity.Post, error)
 		var p entity.Post
 		var imageURL sql.NullString
 		var linkURL sql.NullString
-		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &p.AuthorName, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if imageURL.Valid {
 			p.ImageURL = imageURL.String
-		} else {
-			p.ImageURL = ""
 		}
 		if linkURL.Valid {
 			p.LinkURL = linkURL.String
-		} else {
-			p.LinkURL = ""
 		}
 		result = append(result, p)
 	}
@@ -62,29 +60,31 @@ func (r *postRepository) GetPostByID(ctx context.Context, id int64) (*entity.Pos
 	var imageURL sql.NullString
 	var linkURL sql.NullString
 	err := r.db.QueryRowContext(ctx, `
-        SELECT id, board_id, title, content, author_id, image_url, image_data, link_url, created_at, updated_at
-        FROM posts WHERE id = $1`, id,
-	).Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt)
+        SELECT p.id, p.board_id, p.title, p.content, p.author_id, u.username,
+               p.image_url, p.image_data, p.link_url, p.created_at, p.updated_at
+        FROM posts p
+        JOIN users u ON u.id = p.author_id
+        WHERE p.id = $1`, id,
+	).Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &p.AuthorName, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	if imageURL.Valid {
 		p.ImageURL = imageURL.String
-	} else {
-		p.ImageURL = ""
 	}
 	if linkURL.Valid {
 		p.LinkURL = linkURL.String
-	} else {
-		p.LinkURL = ""
 	}
 	return &p, nil
 }
 
 func (r *postRepository) GetPostsByBoard(ctx context.Context, boardID int64) ([]entity.Post, error) {
 	rows, err := r.db.QueryContext(ctx, `
-        SELECT id, board_id, title, content, author_id, image_url, image_data, link_url, created_at, updated_at
-        FROM posts WHERE board_id = $1 ORDER BY created_at DESC`, boardID)
+        SELECT p.id, p.board_id, p.title, p.content, p.author_id, u.username,
+               p.image_url, p.image_data, p.link_url, p.created_at, p.updated_at
+        FROM posts p
+        JOIN users u ON u.id = p.author_id
+        WHERE p.board_id = $1 ORDER BY p.created_at DESC`, boardID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,18 +94,14 @@ func (r *postRepository) GetPostsByBoard(ctx context.Context, boardID int64) ([]
 		var p entity.Post
 		var imageURL sql.NullString
 		var linkURL sql.NullString
-		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &p.AuthorName, &imageURL, &p.ImageData, &linkURL, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if imageURL.Valid {
 			p.ImageURL = imageURL.String
-		} else {
-			p.ImageURL = ""
 		}
 		if linkURL.Valid {
 			p.LinkURL = linkURL.String
-		} else {
-			p.LinkURL = ""
 		}
 		result = append(result, p)
 	}

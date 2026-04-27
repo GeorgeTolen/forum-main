@@ -6,6 +6,7 @@ import (
 	"forum1/db"
 	"forum1/internal/entity"
 	"forum1/internal/models"
+	"forum1/internal/repository"
 	"forum1/internal/service"
 	"forum1/utils"
 	"net/http"
@@ -20,6 +21,7 @@ type PageHandler struct {
 	boards   service.BoardService
 	comments service.CommentService
 	clubs    service.ClubService
+	users    repository.UserRepository
 }
 
 // WithComments allows injecting CommentService fluently after construction
@@ -34,8 +36,27 @@ func (h *PageHandler) WithClubs(c service.ClubService) *PageHandler {
 	return h
 }
 
+func (h *PageHandler) WithUsers(u repository.UserRepository) *PageHandler {
+	h.users = u
+	return h
+}
+
+func (h *PageHandler) currentUser(r *http.Request) *entity.User {
+	if h.users == nil {
+		return nil
+	}
+	cookie, err := r.Cookie("user")
+	if err != nil || cookie.Value == "" {
+		return nil
+	}
+	user, err := h.users.GetUserByName(r.Context(), cookie.Value)
+	if err != nil {
+		return nil
+	}
+	return user
+}
+
 func NewPageHandler(p service.PostService, b service.BoardService) *PageHandler {
-	// Backwards-compatible constructor; comments can be injected later if needed
 	return &PageHandler{posts: p, boards: b}
 }
 
@@ -55,9 +76,9 @@ func (h *PageHandler) HomePage(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"Boards": boards,
 		"Posts":  posts,
+		"User":   h.currentUser(r),
 	}
 
-	// Решаем формат
 	accept := r.Header.Get("Accept")
 	if strings.Contains(accept, "application/json") {
 		w.Header().Set("Content-Type", "application/json")
@@ -65,7 +86,6 @@ func (h *PageHandler) HomePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// по умолчанию — HTML
 	utils.RenderTemplate(w, "home_page.html", data)
 }
 
@@ -76,7 +96,10 @@ func (h *PageHandler) BoardsListPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := map[string]interface{}{"Boards": boards}
+	data := map[string]interface{}{
+		"Boards": boards,
+		"User":   h.currentUser(r),
+	}
 
 	accept := r.Header.Get("Accept")
 	if strings.Contains(accept, "application/json") {
@@ -104,22 +127,18 @@ func (h *PageHandler) BoardPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := struct {
-		Board *entity.Board `json:"board"`
-		Posts []entity.Post `json:"posts"`
-	}{
-		Board: board,
-		Posts: posts,
+	data := map[string]interface{}{
+		"Board": board,
+		"Posts": posts,
+		"User":  h.currentUser(r),
 	}
 
-	// JSON API
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(data)
 		return
 	}
 
-	// HTML рендеринг
 	utils.RenderTemplate(w, "board_page.html", data)
 }
 
@@ -153,6 +172,7 @@ func (h *PageHandler) PostPage(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]interface{}{
 		"Post": post,
+		"User": h.currentUser(r),
 	}
 
 	accept := r.Header.Get("Accept")
@@ -166,25 +186,32 @@ func (h *PageHandler) PostPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PageHandler) ProfilePageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "profile_page.html", map[string]interface{}{})
+	utils.RenderTemplate(w, "profile_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 func (h *PageHandler) LoginPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "login_page.html", map[string]interface{}{})
+	utils.RenderTemplate(w, "login_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 func (h *PageHandler) RegisterPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "register_page.html", map[string]interface{}{})
+	utils.RenderTemplate(w, "register_page.html", map[string]interface{}{"User": h.currentUser(r)})
+}
+
+func (h *PageHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: "user", Value: "", Path: "/", MaxAge: -1})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (h *PageHandler) CreatePostPageHTML(w http.ResponseWriter, r *http.Request) {
 	boards, _ := h.boards.List(r.Context())
-	// Template expects to range over root (.)
-	utils.RenderTemplate(w, "create_post_page.html", boards)
+	utils.RenderTemplate(w, "create_post_page.html", map[string]interface{}{
+		"Boards": boards,
+		"User":   h.currentUser(r),
+	})
 }
 
 func (h *PageHandler) BoardsSearchPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "boards_search_page.html", map[string]interface{}{})
+	utils.RenderTemplate(w, "boards_search_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 func (h *PageHandler) SearchPageHTML(w http.ResponseWriter, r *http.Request) {
@@ -200,26 +227,23 @@ func (h *PageHandler) SearchPageHTML(w http.ResponseWriter, r *http.Request) {
 		data = results
 	} else {
 		data = map[string]interface{}{
-			"posts":  []entity.Post{},
-			"boards": []entity.Board{},
-			"clubs":  []entity.Club{},
-			"query":  "",
+			"Posts":  []entity.Post{},
+			"Boards": []entity.Board{},
+			"Clubs":  []entity.Club{},
+			"Query":  "",
 		}
 	}
 
+	data["User"] = h.currentUser(r)
 	utils.RenderTemplate(w, "search_page.html", data)
 }
 
 func (h *PageHandler) SettingsPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "settings_page.html", map[string]interface{}{})
-}
-
-func (h *PageHandler) MessagesPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "messages_page.html", map[string]interface{}{})
+	utils.RenderTemplate(w, "settings_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 func (h *PageHandler) NotificationsPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "notifications_page.html", map[string]interface{}{})
+	utils.RenderTemplate(w, "notifications_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 // Serve post image as /post/{id}/image
@@ -395,11 +419,11 @@ func (h *PageHandler) voteComment(w http.ResponseWriter, r *http.Request, value 
 }
 
 func (h *PageHandler) EducationPageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "education_page.html", nil)
+	utils.RenderTemplate(w, "education_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 func (h *PageHandler) TitlePageHTML(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "title_page.html", nil)
+	utils.RenderTemplate(w, "title_page.html", map[string]interface{}{"User": h.currentUser(r)})
 }
 
 // acceptsJSON returns true if request Accept header prefers JSON

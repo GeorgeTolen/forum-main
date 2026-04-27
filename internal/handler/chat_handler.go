@@ -30,12 +30,12 @@ func NewChatPageHandler(c service.ChatService, u repository.UserRepository, h *w
 func (h *ChatPageHandler) ChatListPage(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user")
 	if err != nil || cookie.Value == "" {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		utils.RenderTemplate(w, "auth_required_page.html", map[string]interface{}{"User": nil})
 		return
 	}
 	user, err := h.users.GetUserByName(r.Context(), cookie.Value)
 	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		utils.RenderTemplate(w, "auth_required_page.html", map[string]interface{}{"User": nil})
 		return
 	}
 
@@ -51,12 +51,12 @@ func (h *ChatPageHandler) ChatListPage(w http.ResponseWriter, r *http.Request) {
 func (h *ChatPageHandler) ChatPage(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user")
 	if err != nil || cookie.Value == "" {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		utils.RenderTemplate(w, "auth_required_page.html", map[string]interface{}{"User": nil})
 		return
 	}
 	user, err := h.users.GetUserByName(r.Context(), cookie.Value)
 	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		utils.RenderTemplate(w, "auth_required_page.html", map[string]interface{}{"User": nil})
 		return
 	}
 

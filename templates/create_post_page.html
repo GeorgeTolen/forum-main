@@ -3,7 +3,7 @@
 <form method="POST" action="/api/post" enctype="multipart/form-data">
 	<label>Выберите доску:</label><br />
 	<select name="board_id" required>
-		{{ range . }}
+		{{ range .Boards }}
 		<option value="{{ .ID }}">{{ .Title }}</option>
 		{{ end }}</select
 	><br /><br />

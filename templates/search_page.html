@@ -1,221 +1,83 @@
-{{ define "title" }}Поиск — Форум{{ end }} {{ define "content" }}
-<div style="max-width: 1200px; margin: 0 auto; padding: 20px">
-	<h1>🔍 Поиск</h1>
+{{ define "title" }}Search{{ end }} {{ define "content" }}
+<div>
+    <h2>Search</h2>
 
-	<!-- Форма поиска -->
-	<div style="margin-bottom: 30px">
-		<form
-			method="GET"
-			action="/search"
-			style="display: flex; gap: 10px; max-width: 600px"
-		>
-			<input
-				type="text"
-				name="q"
-				value="{{.Query}}"
-				placeholder="Введите запрос для поиска..."
-				style="
-					flex: 1;
-					padding: 12px;
-					border: 1px solid #dee2e6;
-					border-radius: 4px;
-					font-size: 16px;
-				"
-				required
-			/>
-			<button
-				type="submit"
-				style="
-					background: #007bff;
-					color: white;
-					border: none;
-					padding: 12px 24px;
-					border-radius: 4px;
-					cursor: pointer;
-					font-size: 16px;
-				"
-			>
-				Найти
-			</button>
-		</form>
-	</div>
+    <div style="margin-bottom: 24px">
+        <form method="GET" action="/search" style="display: flex; gap: 10px; max-width: 600px">
+            <input type="text" name="q" value="{{ .Query }}" placeholder="Search posts, boards, clubs..." required />
+            <button type="submit">Search</button>
+        </form>
+    </div>
 
-	{{ if .Query }}
-	<div style="margin-bottom: 20px; color: #6c757d">
-		Результаты поиска по запросу: <strong>"{{.Query}}"</strong>
-	</div>
+    {{ if .Query }}
+    <div style="margin-bottom: 16px; color: #666">
+        Results for: <strong>"{{ .Query }}"</strong>
+    </div>
 
-	<!-- Клубы -->
-	{{ if .Clubs }}
-	<div style="margin-bottom: 30px">
-		<h2 style="color: #28a745; margin-bottom: 15px">
-			🏢 Клубы ({{len .Clubs}})
-		</h2>
-		<div
-			style="
-				display: grid;
-				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-				gap: 15px;
-			"
-		>
-			{{ range .Clubs }}
-			<div
-				style="
-					border: 1px solid #dee2e6;
-					border-radius: 8px;
-					padding: 15px;
-					background: white;
-					box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-				"
-			>
-				<div style="display: flex; gap: 10px; align-items: flex-start">
-					{{ if .ImageData }}
-					<img
-						src="/club/{{.ID}}/image"
-						alt="Изображение клуба"
-						style="
-							width: 60px;
-							height: 60px;
-							object-fit: cover;
-							border-radius: 4px;
-							border: 1px solid #dee2e6;
-						"
-					/>
-					{{ end }}
-					<div style="flex: 1">
-						<h3 style="margin: 0 0 5px 0">
-							<a
-								href="/clubs/{{.ID}}"
-								style="text-decoration: none; color: #007bff"
-								>{{.Name}}</a
-							>
-						</h3>
-						<p style="margin: 0 0 5px 0; color: #6c757d; font-size: 14px">
-							<strong>Тематика:</strong> {{.Topic}}
-						</p>
-						<p style="margin: 0; color: #495057; font-size: 14px">
-							{{.Description}}
-						</p>
-					</div>
-				</div>
-			</div>
-			{{ end }}
-		</div>
-	</div>
-	{{ end }}
+    <!-- Clubs -->
+    {{ if .Clubs }}
+    <div style="margin-bottom: 24px">
+        <h3>Clubs ({{ len .Clubs }})</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+            {{ range .Clubs }}
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; background: #fff;">
+                <div style="display: flex; gap: 10px; align-items: flex-start">
+                    {{ if .ImageData }}
+                    <img src="/club/{{.ID}}/image" alt="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;" />
+                    {{ end }}
+                    <div>
+                        <h4 style="margin: 0 0 4px"><a href="/clubs/{{.ID}}">{{.Name}}</a></h4>
+                        <p style="margin: 0; color: #888; font-size: 13px">{{.Topic}}</p>
+                        <p style="margin: 4px 0 0; color: #555; font-size: 13px">{{.Description}}</p>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+    {{ end }}
 
-	<!-- Доски -->
-	{{ if .Boards }}
-	<div style="margin-bottom: 30px">
-		<h2 style="color: #dc3545; margin-bottom: 15px">
-			📋 Доски ({{len .Boards}})
-		</h2>
-		<div
-			style="
-				display: grid;
-				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-				gap: 15px;
-			"
-		>
-			{{ range .Boards }}
-			<div
-				style="
-					border: 1px solid #dee2e6;
-					border-radius: 8px;
-					padding: 15px;
-					background: white;
-					box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-				"
-			>
-				<h3 style="margin: 0 0 8px 0">
-					<a
-						href="/board/{{.Slug}}"
-						style="text-decoration: none; color: #007bff"
-						>{{.Title}}</a
-					>
-				</h3>
-				<p style="margin: 0; color: #6c757d; font-size: 14px">
-					{{.Description}}
-				</p>
-				{{ if .ClubID }}
-				<p style="margin: 5px 0 0 0; color: #28a745; font-size: 12px">
-					🏢 Клуб
-				</p>
-				{{ end }}
-			</div>
-			{{ end }}
-		</div>
-	</div>
-	{{ end }}
+    <!-- Boards -->
+    {{ if .Boards }}
+    <div style="margin-bottom: 24px">
+        <h3>Boards ({{ len .Boards }})</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+            {{ range .Boards }}
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; background: #fff;">
+                <h4 style="margin: 0 0 6px"><a href="/board/{{.Slug}}">{{.Title}}</a></h4>
+                <p style="margin: 0; color: #666; font-size: 13px">{{.Description}}</p>
+            </div>
+            {{ end }}
+        </div>
+    </div>
+    {{ end }}
 
-	<!-- Посты -->
-	{{ if .Posts }}
-	<div style="margin-bottom: 30px">
-		<h2 style="color: #6f42c1; margin-bottom: 15px">
-			📝 Посты ({{len .Posts}})
-		</h2>
-		<div style="display: grid; gap: 15px">
-			{{ range .Posts }}
-			<div
-				style="
-					border: 1px solid #dee2e6;
-					border-radius: 8px;
-					padding: 20px;
-					background: white;
-					box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-				"
-			>
-				<h3 style="margin: 0 0 10px 0">
-					<a href="/post/{{.ID}}" style="text-decoration: none; color: #007bff"
-						>{{.Title}}</a
-					>
-				</h3>
-				<div style="color: #6c757d; font-size: 14px; margin-bottom: 10px">
-					Автор ID: {{.AuthorID}} • {{.CreatedAt.Format "02.01.2006 15:04"}}
-				</div>
-				<p style="margin: 0 0 10px 0; color: #495057">{{.Content}}</p>
-				<div style="display: flex; gap: 15px; color: #6c757d; font-size: 14px">
-					<span>👍 {{.Likes}}</span>
-					<span>👎 {{.Dislikes}}</span>
-				</div>
-			</div>
-			{{ end }}
-		</div>
-	</div>
-	{{ end }}
+    <!-- Posts -->
+    {{ if .Posts }}
+    <div style="margin-bottom: 24px">
+        <h3>Posts ({{ len .Posts }})</h3>
+        {{ range .Posts }}
+        <div class="post">
+            <h3><a href="/post/{{.ID}}">{{.Title}}</a></h3>
+            <p>{{.Content}}</p>
+            <small>by {{ if .AuthorName }}{{.AuthorName}}{{ else }}User #{{.AuthorID}}{{ end }} | {{.CreatedAt.Format "02.01.2006 15:04"}} | +{{.Likes}} -{{.Dislikes}}</small>
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
 
-	<!-- Если ничего не найдено -->
-	{{ if and (not .Clubs) (not .Boards) (not .Posts) }}
-	<div style="text-align: center; padding: 40px; color: #6c757d">
-		<div style="font-size: 4em; margin-bottom: 20px">🔍</div>
-		<h3>Ничего не найдено</h3>
-		<p>Попробуйте изменить запрос или использовать другие ключевые слова</p>
-	</div>
-	{{ end }} {{ else }}
-	<!-- Начальная страница поиска -->
-	<div style="text-align: center; padding: 40px; color: #6c757d">
-		<div style="font-size: 4em; margin-bottom: 20px">🔍</div>
-		<h3>Начните поиск</h3>
-		<p>Введите запрос в поле выше для поиска по постам, клубам и доскам</p>
+    {{ if and (not .Clubs) (not .Boards) (not .Posts) }}
+    <div style="text-align: center; padding: 40px; color: #888">
+        <h3>Nothing found</h3>
+        <p>Try different keywords</p>
+    </div>
+    {{ end }}
 
-		<div
-			style="
-				margin-top: 30px;
-				text-align: left;
-				max-width: 600px;
-				margin-left: auto;
-				margin-right: auto;
-			"
-		>
-			<h4>💡 Советы по поиску:</h4>
-			<ul style="color: #495057">
-				<li>Используйте ключевые слова из названий или содержимого</li>
-				<li>Поиск работает даже по одной букве</li>
-				<li>Регистр не важен</li>
-				<li>Поиск ведется по постам, клубам и доскам одновременно</li>
-			</ul>
-		</div>
-	</div>
-	{{ end }}
+    {{ else }}
+    <div style="text-align: center; padding: 40px; color: #888">
+        <h3>Start searching</h3>
+        <p>Enter a query above to search posts, clubs, and boards</p>
+    </div>
+    {{ end }}
 </div>
 {{ end }}

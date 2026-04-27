@@ -1,154 +1,126 @@
 <!DOCTYPE html>
 <html lang="ru">
-	<head>
-		<meta charset="UTF-8" />
-		<title>{{ template "title" . }}</title>
-		<style>
-			body {
-				font-family: Arial, sans-serif;
-				margin: 0;
-				background: #f5f5f5;
-			}
-			header {
-				background: #2c3e50;
-				padding: 10px 20px;
-				color: white;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-			}
-			header h1 {
-				margin: 0;
-			}
-			.search-bar {
-				display: flex;
-				align-items: center;
-			}
-			.search-bar input[type='text'] {
-				padding: 5px 10px;
-				border-radius: 4px 0 0 4px;
-				border: none;
-				outline: none;
-			}
-			.search-bar button {
-				padding: 6px 12px;
-				border: none;
-				background: #2980b9;
-				color: white;
-				border-radius: 0 4px 4px 0;
-				cursor: pointer;
-			}
-			.search-bar button:hover {
-				background: #3498db;
-			}
-			.container {
-				display: grid;
-				grid-template-columns: 200px 1fr 250px;
-				gap: 20px;
-				padding: 20px;
-			}
-			nav {
-				background: #34495e;
-				color: white;
-				padding: 15px;
-				border-radius: 8px;
-			}
-			nav a {
-				display: block;
-				color: white;
-				text-decoration: none;
-				margin: 8px 0;
-			}
-			nav a:hover {
-				text-decoration: underline;
-			}
-			main {
-				background: white;
-				padding: 15px;
-				border-radius: 8px;
-			}
-			.post {
-				border-bottom: 1px solid #ddd;
-				padding: 10px 0;
-			}
-			.post h3 {
-				margin: 0;
-				color: #2c3e50;
-			}
-			.post p {
-				margin: 5px 0;
-				color: #555;
-			}
-			aside {
-				background: white;
-				padding: 15px;
-				border-radius: 8px;
-			}
-			aside h4 {
-				margin-top: 0;
-			}
-			.category {
-				margin: 5px 0;
-			}
-			.category a {
-				text-decoration: none;
-				color: #2980b9;
-			}
-		</style>
-	</head>
-	<script>
-		function filterMain() {
-			let input = document.getElementById('main-search-input').value.trim()
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ template "title" . }}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <header>
+        <a href="/" class="logo">My Forum</a>
+        <form class="search-bar" onsubmit="return false;">
+            <input type="text" id="main-search-input" placeholder="Search..." />
+            <button type="button" onclick="filterMain()">Search</button>
+        </form>
+        <div class="header-right">
+            {{ if .User }}
+            <a href="/profile/{{ .User.ID }}" class="header-user">{{ .User.Username }}</a>
+            <a href="/logout" class="btn btn-outline btn-sm">Logout</a>
+            {{ else }}
+            <a href="/login" class="btn btn-primary btn-sm">Войти</a>
+            <a href="/register" class="btn btn-outline btn-sm">Регистрация</a>
+            {{ end }}
+        </div>
+    </header>
 
-			if (input === '') {
-				return
-			}
+    <div class="container">
+        <!-- Left nav -->
+        <nav class="sidebar-left">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/boards" class="nav-link">Boards</a>
+            <a href="/create-post" class="nav-link" {{ if not .User }}onclick="return requireAuth()"{{ end }}>Create Post</a>
+            <a href="/search" class="nav-link">Search</a>
 
-			// Перенаправляем на страницу поиска
-			window.location.href = '/search?q=' + encodeURIComponent(input)
-		}
+            <div class="nav-divider"></div>
 
-		// Обработка Enter в поле поиска
-		document
-			.getElementById('main-search-input')
-			.addEventListener('keypress', function (e) {
-				if (e.key === 'Enter') {
-					e.preventDefault()
-					filterMain()
-				}
-			})
-	</script>
+            <h4 class="nav-section">Categories</h4>
+            <a href="/board/news" class="nav-link nav-link-sub">News</a>
+            <a href="/board/reviews" class="nav-link nav-link-sub">Reviews</a>
+            <a href="/board/games" class="nav-link nav-link-sub">Games</a>
+            <a href="/board/offtopic" class="nav-link nav-link-sub">Offtopic</a>
+        </nav>
 
-	<body>
-		<header>
-			<h1>My Forum</h1>
-			<form class="search-bar" id="main-search-form" onsubmit="return false;">
-				<input type="text" id="main-search-input" placeholder="Поиск..." />
-				<button type="button" onclick="filterMain()">Найти</button>
-			</form>
-		</header>
-		<div class="container">
-			<!-- Левое меню -->
-			<nav>
-				<h3>Навигация</h3>
-				<a href="/">Главная</a>
-				<a href="/boards">Доски</a>
-				<a href="/clubs">Клубы</a>
-				<a href="/friends">Friends</a>
-				<a href="/chat">Chat</a>
-				<a href="/profile/1">Профиль</a>
-				<a href="/create-post">Создать пост</a>
-				<a href="/login">Войти</a>
-				<a href="/register">Регистрация</a>
-			</nav>
-			<!-- Центральная часть -->
-			<main>{{ template "content" . }}</main>
-			<!-- Правая колонка -->
-			<aside>
-				<h4>Категории</h4>
-				<div class="category"><a href="/board/news">News</a></div>
-				<div class="category"><a href="/board/reviews">Reviews</a></div>
-			</aside>
-		</div>
-	</body>
+        <!-- Main content -->
+        <main>{{ template "content" . }}</main>
+
+        <!-- Right sidebar -->
+        <aside class="sidebar-right">
+            <h4 class="sidebar-title">Features</h4>
+
+            <a href="/friends" class="feature-btn" {{ if not .User }}onclick="return requireAuth()"{{ end }}>
+                <span class="feature-icon">𐀪𐀪</span> Friends
+            </a>
+            <a href="/chat" class="feature-btn" {{ if not .User }}onclick="return requireAuth()"{{ end }}>
+                <span class="feature-icon">⌯⌲</span> Chat
+            </a>
+            <a href="/clubs" class="feature-btn">
+                <span class="feature-icon">♦</span> Clubs
+            </a>
+            <div class="feature-btn feature-btn-disabled">
+                <span class="feature-icon">⚛</span> AI Agent
+                <span class="badge-soon">Soon</span>
+            </div>
+
+            {{ if .User }}
+            <div class="nav-divider"></div>
+            <h4 class="sidebar-title">Account</h4>
+            <a href="/profile/{{ .User.ID }}" class="feature-btn">
+                <span class="feature-icon">☻</span> Profile
+            </a>
+            <a href="/settings" class="feature-btn">
+                <span class="feature-icon">⏣</span> Settings
+            </a>
+            {{ end }}
+        </aside>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay" style="display:none;" onclick="closeAuthModal(event)">
+        <div class="modal-box">
+            <button class="modal-close" onclick="document.getElementById('auth-modal').style.display='none'">&times;</button>
+            <h3>You need to be authorized</h3>
+            <p>Please sign in to use this feature.</p>
+            <div class="modal-actions">
+                <a href="/login" class="btn btn-primary">Войти</a>
+            </div>
+            <p class="modal-footer-text">Если нет аккаунта то <a href="/register">зарегистрируйтесь</a></p>
+        </div>
+    </div>
+
+    <script>
+    function filterMain() {
+        var input = document.getElementById('main-search-input').value.trim();
+        if (input === '') return;
+        window.location.href = '/search?q=' + encodeURIComponent(input);
+    }
+    document.getElementById('main-search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); filterMain(); }
+    });
+
+    function requireAuth() {
+        document.getElementById('auth-modal').style.display = 'flex';
+        return false;
+    }
+
+    function closeAuthModal(e) {
+        if (e.target === e.currentTarget) {
+            document.getElementById('auth-modal').style.display = 'none';
+        }
+    }
+
+    // Global: intercept 401 responses and show auth modal
+    (function() {
+        var origFetch = window.fetch;
+        window.fetch = function() {
+            return origFetch.apply(this, arguments).then(function(response) {
+                if (response.status === 401) {
+                    document.getElementById('auth-modal').style.display = 'flex';
+                }
+                return response;
+            });
+        };
+    })();
+    </script>
+</body>
 </html>

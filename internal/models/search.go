@@ -16,18 +16,19 @@ func SearchPosts(query string) ([]entity.Post, error) {
 	searchPattern := "%" + query + "%"
 
 	rows, err := db.DB.Query(`
-		SELECT p.id, p.board_id, p.title, p.content, p.author_id, p.created_at, p.updated_at,
+		SELECT p.id, p.board_id, p.title, p.content, p.author_id, u.username, p.created_at, p.updated_at,
 		       COALESCE(SUM(CASE WHEN pv.value=1 THEN 1 ELSE 0 END),0) AS likes,
 		       COALESCE(SUM(CASE WHEN pv.value=-1 THEN 1 ELSE 0 END),0) AS dislikes
 		FROM posts p
+		JOIN users u ON u.id = p.author_id
 		LEFT JOIN post_votes pv ON pv.post_id = p.id
 		WHERE p.title ILIKE $1 OR p.content ILIKE $1
-		GROUP BY p.id, p.board_id, p.title, p.content, p.author_id, p.created_at, p.updated_at
-		ORDER BY 
-			CASE 
-				WHEN p.title ILIKE $2 THEN 1  -- Точное совпадение в заголовке
-				WHEN p.title ILIKE $1 THEN 2  -- Частичное совпадение в заголовке
-				ELSE 3  -- Совпадение в содержимом
+		GROUP BY p.id, p.board_id, p.title, p.content, p.author_id, u.username, p.created_at, p.updated_at
+		ORDER BY
+			CASE
+				WHEN p.title ILIKE $2 THEN 1
+				WHEN p.title ILIKE $1 THEN 2
+				ELSE 3
 			END,
 			p.created_at DESC
 	`, searchPattern, query)
@@ -39,7 +40,7 @@ func SearchPosts(query string) ([]entity.Post, error) {
 	var posts []entity.Post
 	for rows.Next() {
 		var p entity.Post
-		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &p.CreatedAt, &p.UpdatedAt, &p.Likes, &p.Dislikes); err != nil {
+		if err := rows.Scan(&p.ID, &p.BoardID, &p.Title, &p.Content, &p.AuthorID, &p.AuthorName, &p.CreatedAt, &p.UpdatedAt, &p.Likes, &p.Dislikes); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
@@ -131,9 +132,10 @@ func SearchAll(query string) (map[string]interface{}, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return map[string]interface{}{
-			"posts":  []entity.Post{},
-			"boards": []entity.Board{},
-			"clubs":  []entity.Club{},
+			"Posts":  []entity.Post{},
+			"Boards": []entity.Board{},
+			"Clubs":  []entity.Club{},
+			"Query":  "",
 		}, nil
 	}
 
@@ -153,9 +155,9 @@ func SearchAll(query string) (map[string]interface{}, error) {
 	}
 
 	return map[string]interface{}{
-		"posts":  posts,
-		"boards": boards,
-		"clubs":  clubs,
-		"query":  query,
+		"Posts":  posts,
+		"Boards": boards,
+		"Clubs":  clubs,
+		"Query":  query,
 	}, nil
 }

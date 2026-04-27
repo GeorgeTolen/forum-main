@@ -137,7 +137,12 @@ func (h *ClubPageHandler) DetailPage(w http.ResponseWriter, r *http.Request) {
 
 // GET /clubs/new
 func (h *ClubPageHandler) NewPage(w http.ResponseWriter, r *http.Request) {
-	utils.RenderTemplate(w, "club_form.html", nil)
+	var user interface{}
+	c, err := r.Cookie("user")
+	if err == nil && c.Value != "" {
+		user = map[string]string{"username": c.Value}
+	}
+	utils.RenderTemplate(w, "club_form.html", map[string]interface{}{"User": user})
 }
 
 // POST /clubs (HTML-форма)

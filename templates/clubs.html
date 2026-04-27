@@ -1,108 +1,49 @@
-{{ define "title" }}Клубы — Форум{{ end }} {{ define "content" }}
-<h2>Список клубов</h2>
+{{ define "title" }}Clubs{{ end }} {{ define "content" }}
+<h2>Clubs</h2>
 
-<!-- Кнопка создания клуба с проверкой авторизации -->
 <p>
-	<button onclick="checkAuthAndCreateClub()" class="btn">
-		➕ Создать клуб
-	</button>
+    {{ if .User }}
+    <a href="/clubs/new" class="btn btn-primary">+ Create Club</a>
+    {{ else }}
+    <button onclick="requireAuth()" class="btn btn-primary">+ Create Club</button>
+    {{ end }}
 </p>
 
-<div
-	style="
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 20px;
-		margin-top: 20px;
-	"
->
-	{{ range .Clubs }}
-	<div
-		style="
-			border: 1px solid #dee2e6;
-			border-radius: 8px;
-			padding: 20px;
-			background: white;
-			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-		"
-	>
-		<div style="display: flex; gap: 15px; align-items: flex-start">
-			{{ if .ImageData }}
-			<div style="flex: 0 0 80px">
-				<img
-					src="/club/{{ .ID }}/image"
-					alt="Изображение клуба"
-					style="
-						width: 80px;
-						height: 80px;
-						object-fit: cover;
-						border-radius: 8px;
-						border: 1px solid #dee2e6;
-					"
-				/>
-			</div>
-			{{ end }}
-			<div style="flex: 1">
-				<h3 style="margin: 0 0 8px 0">
-					<a
-						href="/clubs/{{ .ID }}"
-						style="text-decoration: none; color: #007bff"
-						>{{ .Name }}</a
-					>
-				</h3>
-				<p style="margin: 0 0 8px 0; color: #6c757d; font-size: 14px">
-					<strong>Тематика:</strong> {{ .Topic }}
-				</p>
-				<p style="margin: 0; color: #495057; font-size: 14px">
-					{{ .Description }}
-				</p>
-			</div>
-		</div>
-	</div>
-	{{ else }}
-	<div
-		style="
-			grid-column: 1 / -1;
-			text-align: center;
-			padding: 40px;
-			color: #6c757d;
-		"
-	>
-		<p>Клубов пока нет</p>
-	</div>
-	{{ end }}
+<!-- Search clubs -->
+<div style="margin-bottom: 20px;">
+    <input type="text" id="club-search" placeholder="Search clubs..." style="max-width: 400px;" oninput="filterClubs()" />
+</div>
+
+<div id="clubs-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 16px;">
+    {{ range .Clubs }}
+    <div class="club-card" data-name="{{ .Name }}" data-topic="{{ .Topic }}" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; background: #fff;">
+        <div style="display: flex; gap: 12px; align-items: flex-start">
+            {{ if .ImageData }}
+            <img src="/club/{{ .ID }}/image" alt="" style="width: 64px; height: 64px; object-fit: cover; border-radius: 8px;" />
+            {{ end }}
+            <div style="flex: 1">
+                <h3 style="margin: 0 0 6px"><a href="/clubs/{{ .ID }}">{{ .Name }}</a></h3>
+                <p style="margin: 0 0 6px; color: #888; font-size: 13px"><strong>Topic:</strong> {{ .Topic }}</p>
+                <p style="margin: 0; color: #555; font-size: 13px">{{ .Description }}</p>
+            </div>
+        </div>
+    </div>
+    {{ else }}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #888;">
+        <p>No clubs yet. Create one!</p>
+    </div>
+    {{ end }}
 </div>
 
 <script>
-	function checkAuthAndCreateClub() {
-		console.log('Checking auth for club creation...')
-		console.log('Current cookies:', document.cookie)
-		// Проверяем авторизацию через API
-		fetch('/api/auth/check', {
-			method: 'GET',
-			credentials: 'include', // Важно для отправки cookie
-		})
-			.then(response => {
-				console.log('Auth check response status:', response.status)
-				if (response.ok) {
-					// Авторизован - переходим на страницу создания
-					console.log('User is authorized, redirecting to club creation')
-					window.location.href = '/clubs/new'
-				} else if (response.status === 401) {
-					// Не авторизован - показываем сообщение
-					console.log('User is not authorized')
-					alert('Для создания клуба необходимо войти в систему')
-					window.location.href = '/login'
-				} else {
-					// Другая ошибка
-					console.log('Auth check failed with status:', response.status)
-					alert('Ошибка проверки авторизации')
-				}
-			})
-			.catch(error => {
-				console.error('Auth check error:', error)
-				alert('Ошибка проверки авторизации')
-			})
-	}
+function filterClubs() {
+    var q = document.getElementById('club-search').value.toLowerCase();
+    var cards = document.querySelectorAll('.club-card');
+    cards.forEach(function(card) {
+        var name = (card.getAttribute('data-name') || '').toLowerCase();
+        var topic = (card.getAttribute('data-topic') || '').toLowerCase();
+        card.style.display = (name.indexOf(q) !== -1 || topic.indexOf(q) !== -1) ? '' : 'none';
+    });
+}
 </script>
 {{ end }}

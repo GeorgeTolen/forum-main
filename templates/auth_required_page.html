@@ -1,0 +1,10 @@
+{{ define "title" }}Authorization Required{{ end }}
+{{ define "content" }}
+<div style="text-align: center; padding: 60px 20px;">
+    <div style="font-size: 48px; margin-bottom: 16px;">&#128274;</div>
+    <h2 style="margin-bottom: 8px; color: #333;">You need to be authorized</h2>
+    <p style="color: #666; margin-bottom: 24px;">Please sign in to access this feature.</p>
+    <a href="/login" class="btn btn-primary" style="padding: 12px 32px; font-size: 16px;">Войти</a>
+    <p style="margin-top: 16px; color: #888; font-size: 14px;">Если нет аккаунта то <a href="/register">зарегистрируйтесь</a></p>
+</div>
+{{ end }}

@@ -22,12 +22,12 @@ func NewFriendshipPageHandler(f service.FriendshipService, u repository.UserRepo
 func (h *FriendshipPageHandler) FriendsPage(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("user")
 	if err != nil || cookie.Value == "" {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		utils.RenderTemplate(w, "auth_required_page.html", map[string]interface{}{"User": nil})
 		return
 	}
 	user, err := h.users.GetUserByName(r.Context(), cookie.Value)
 	if err != nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		utils.RenderTemplate(w, "auth_required_page.html", map[string]interface{}{"User": nil})
 		return
 	}
 
